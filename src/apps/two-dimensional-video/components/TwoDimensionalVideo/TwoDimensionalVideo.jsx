@@ -130,11 +130,7 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleVideoNextSecFrame = () => {	
-		
-		console.log("prev played", this.state.played * this.state.duration)	
-		console.log("duration", this.state.duration)	
 		const played = (this.state.played * this.state.duration + 1) / this.state.duration;
-		console.log("new played", played);
 		this.setState((prevState) => {
 			const { entities } = prevState;
 			let { focusing } = prevState;
@@ -152,24 +148,25 @@ class TwoDimensionalVideo extends Component {
 		}, () => { this.player.seekTo(played); });
 	}
 
-	handleVideoPrevSecFrame = () => {
-		
+	handleVideoPrevSecFrame = () => {		
 		const played = (this.state.played * this.state.duration - 1) / this.state.duration;
-		this.setState((prevState) => {
-			const { entities } = prevState;
-			let { focusing } = prevState;
-			if (focusing) {
-				const { incidents } = entities.annotations[focusing];
-				for (let i = 0; i < incidents.length; i += 1) {
-					if (played >= incidents[i].time) {
-						if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
-						if (incidents[i].status !== SHOW) focusing = '';
-						break;
-					} else if (i === incidents.length - 1) focusing = '';
+		if(played > 0) {
+			this.setState((prevState) => {
+				const { entities } = prevState;
+				let { focusing } = prevState;
+				if (focusing) {
+					const { incidents } = entities.annotations[focusing];
+					for (let i = 0; i < incidents.length; i += 1) {
+						if (played >= incidents[i].time) {
+							if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
+							if (incidents[i].status !== SHOW) focusing = '';
+							break;
+						} else if (i === incidents.length - 1) focusing = '';
+					}
 				}
-			}
-			return { played, focusing };
-		}, () => { this.player.seekTo(played); });
+				return { played, focusing };
+			}, () => { this.player.seekTo(played); });
+		}
 	}
 
 	/* ==================== canvas ==================== */
