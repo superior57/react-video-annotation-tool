@@ -1,0 +1,48 @@
+.incident-list {
+    &__item {
+        min-width: 380px;
+    	padding: 0;
+    	line-height: 1;
+    	border: none;
+
+        &:hover,
+    	&:focus {
+    		border: none;
+    	}
+    }
+
+    &__item-button {
+        color: #a2b0bc;
+        padding: 0;
+
+        &:hover,
+    	&:focus {
+            text-decoration: none;
+            cursor: pointer;
+        	color: #555c63;
+        }
+    }
+
+    &__item-status {
+    	font-size: 0.85rem;
+    }
+
+    &__item-duration {
+        font-family: Courier, sans-serif;
+    }
+
+    &__item-size {
+    	font-size: 0.85rem;
+    }
+
+    &__item-position {
+    	font-size: 0.85rem;
+    }
+
+    &__item-delete-button {
+        line-height: 1;
+        font-size: 1.2rem;
+        color: rgb(220, 53, 69);
+        padding: 0;
+    }
+}

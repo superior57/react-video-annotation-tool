@@ -1,0 +1,27 @@
+.option-item .option-item {
+    &__button {
+        color: #212529;
+
+        svg {
+            margin-left: 3px;
+            font-size: 0.8rem;
+            margin-top: 1px;
+        }
+
+        &:hover,
+        &:active,
+        &:focus {
+            text-decoration: none;
+        }
+    }
+
+    &__delete-button {
+        padding: 0.375rem 0.3rem;
+    	color: #dc3545;
+    	font-size: 18px;
+
+        &:hover {
+        	color: #c82333;
+        }
+    }
+}
