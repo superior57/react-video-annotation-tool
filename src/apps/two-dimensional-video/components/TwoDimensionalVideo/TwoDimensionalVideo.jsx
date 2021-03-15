@@ -153,10 +153,8 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleVideoPrevSecFrame = () => {
-		console.log((parseInt(this.state.played * this.state.duration) - 1) / this.state.duration);
-		console.log((parseInt(this.state.played * this.state.duration) - 1))
 		
-		const played = (parseInt(this.state.played * this.state.duration) - 1) / this.state.duration;
+		const played = (this.state.played * this.state.duration - 1) / this.state.duration;
 		this.setState((prevState) => {
 			const { entities } = prevState;
 			let { focusing } = prevState;
