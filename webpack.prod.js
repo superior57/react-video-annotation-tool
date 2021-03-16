@@ -10,7 +10,7 @@ module.exports = merge(common, {
 	output: {
 		path: path.resolve(__dirname, 'dist/'),
 		publicPath: '/dist/',
-		filename: 'bundle.js',
+		filename: 'demo.bundle.js',
 		libraryTarget: 'commonjs2',
 	},
 	plugins: [
