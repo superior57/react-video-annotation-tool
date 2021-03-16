@@ -40,6 +40,7 @@ const AnnotationList = ({ className }) => {
 	}, [focusing]);
 
 	const sortedAnnotations = getSortedAnnotationsByLabel(annotations, entities);
+	// console.log("sortedannotations in entities", entities);
 	const itemsUI = sortedAnnotations
 		.filter(ann => entities && entities.annotations[ann] && entities.annotations[ann].isManipulatable)
 		.map(ann => (

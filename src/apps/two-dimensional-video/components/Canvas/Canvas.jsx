@@ -49,6 +49,7 @@ const Canvas = ({
 }) => {
 	const { t } = useTranslation('twoDimensionalVideo');
 	const layerItems = [];
+	console.log(layerItems);
 	annotations.slice().reverse().forEach((annotationId) => {
 		const {
 			incidents, color, id, name, label, isManipulatable,

@@ -20,6 +20,7 @@ import AnnotationList from '../AnnotationList/AnnotationList.jsx';
 import DrawableVideoPlayer from '../DrawableVideoPlayer/DrawableVideoPlayer.jsx';
 import { getLastAnnotationLabel, getUniqueKey } from '../../utils/utils';
 import './twoDimensionalVideo.scss';
+import ColorPicker, { getRgbColor } from "shared/components/ColorPicker/ColorPicker";
 
 class TwoDimensionalVideo extends Component {
 	constructor(props) {
@@ -177,7 +178,8 @@ class TwoDimensionalVideo extends Component {
 		const stage = e.target.getStage();
 		const position = stage.getPointerPosition();
 		const uniqueKey = getUniqueKey();
-		const color = colors[getRandomInt(colors.length)];
+		// const color = colors[getRandomInt(colors.length)];
+		const color = "#4A90E2"
 		this.setState((prevState) => {
 			this.UndoRedoState.save({ ...prevState, isAdding: false }); // Undo/Redo
 			const {
@@ -595,6 +597,27 @@ class TwoDimensionalVideo extends Component {
 		return null;
 	}
 
+	handleChangeColorPicker = (color) => {
+		const { focusing } = this.state;
+		this.setState((prevState) => {
+			const { entities } = prevState;
+			const cur_entity = entities.annotations[focusing];
+			cur_entity.color = getRgbColor(color.rgb);
+			return {};
+		});
+	}
+
+	handleSaveData = () => {
+		const { annotations, entities } = this.state;
+		let data = {
+			annotations,
+			entities
+		};
+		data = JSON.stringify(data);
+		// data = JSON.parse(data);
+		console.log("sate in saving data", data);
+	}
+
 	render() {
 		const {
 			isSubmitted,
@@ -665,7 +688,8 @@ class TwoDimensionalVideo extends Component {
 			onIncidentItemClick: this.handleIncidentItemClick,
 			onIncidentItemDeleteClick: this.handleIncidentItemDelete,
 			onVideoNextSecFrame: this.handleVideoNextSecFrame,
-			onVideoPrevSecFrame: this.handleVideoPrevSecFrame
+			onVideoPrevSecFrame: this.handleVideoPrevSecFrame,
+			onChangeColorPicker: this.handleChangeColorPicker
 		};
 
 		let controlPanelUI = null;
@@ -679,7 +703,7 @@ class TwoDimensionalVideo extends Component {
 			);
 		} else {
 			controlPanelUI = (
-				<div>
+				<div className="w-100 mb-auto">
 					<div className='pb-3 clearfix'>
 						{this.renderAddButtonUI()}
 						{/* <ButtonGroup className='float-right'>
@@ -698,14 +722,30 @@ class TwoDimensionalVideo extends Component {
 		return (
 			<I18nextProvider i18n={ i18nextInstance }>
 				<TwoDimensionalVideoContext.Provider value={ twoDimensionalVideoContext }>
-					<div className={ rootClassName }>						
-						<div className='d-flex justify-content-around py-5 px-3 two-dimensional-video__main'>
-							<div className='mb-3 two-dimensional-video__control-panel px-3 py-3'>
+					<div className={ rootClassName }>		
+						<div className='d-flex justify-content-around py-5 px-3 two-dimensional-video__main'>							
+							<div className='mb-3 two-dimensional-video__control-panel px-3 py-3 d-flex flex-wrap'>
 								{ controlPanelUI }
-								{ isSubmitted ? '' : (<div><Button color="success">Save</Button></div>)}
+								{ isSubmitted ? '' : (
+									<div className="w-100 pt-3 mt-auto">
+										<Button 
+											className="w-100"
+											color="success" 
+											onClick={ this.handleSaveData }										
+										>Save</Button>
+									</div>
+								)}
 							</div>
-							<div className='mb-3 px-3' style={ { width: '100%' } }>
-								<DrawableVideoPlayer />
+
+							<div className='ml-3' style={{
+								width: "100%"
+							}}>
+								{/* <div className="py-3 px-5 custom-card">
+									
+								</div> */}
+								<div className='px-3 mt-3' style={ { width: '100%' } }>
+									<DrawableVideoPlayer />
+								</div>
 							</div>
 						</div>
 						<PopupDialog isOpen={ isDialogOpen } title={ dialogTitle } message={ dialogMessage } onToggle={ this.handleDialogToggle } hasCloseButton />

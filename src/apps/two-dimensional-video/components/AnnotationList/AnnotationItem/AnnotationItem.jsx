@@ -14,12 +14,13 @@ import OpenDialogButton from '../../OpenDialogButton/OpenDialogButton.jsx';
 import { isDialogDisabledConst } from '../isDialogDisabledReducer';
 import 'bootstrap/dist/css/bootstrap.css';
 import './annotationItem.scss';
+import ColorPicker from "shared/components/ColorPicker/ColorPicker";
 
 const AnnotationItem = ({
 	className,
 	itemData,
 	isDialogDisabled,
-	dispatchIsDialogDisabled,
+	dispatchIsDialogDisabled
 }) => {
 	const twoDimensionalVideoContext = useContext(TwoDimensionalVideoContext);
 	const {
@@ -34,6 +35,7 @@ const AnnotationItem = ({
 		onAnnotationDeleteClick,
 		onAnnotationShowHideClick,
 		onAnnotationSplitClick,
+		onChangeColorPicker
 	} = twoDimensionalVideoContext;
 	const [isIncidentListOpen, setIsIncidentListOpen] = useState(false);
 	const { t } = useTranslation('twoDimensionalVideo');
@@ -46,6 +48,8 @@ const AnnotationItem = ({
 		parentName,
 		childrenNames,
 	} = itemData;
+
+	// console.log("itemdata in annotationItem", itemData);
 	const parentAnnotation = entities.annotations[parentName];
 	const childrenUI = childrenNames.map(c => (
 		<Button color='link' key={ c } onClick={ () => onAnnotationItemClick(c) } className='video-ann-relatives'>
@@ -146,7 +150,8 @@ const AnnotationItem = ({
 			<div className='d-flex align-items-center mb-2'>
 				<div className='mr-auto'><strong>{label+ ' Layout'}</strong></div>
 				{/* {isSplitEnable && splitButtonUI} */}
-				{isShowHideEnable && hideButtonUI}
+				{/* <ColorPicker />
+				{isShowHideEnable && hideButtonUI} */}
 				{/* {showButtonUI} */}
 				{/* <OpenDialogButton
 					className='d-flex align-items-center annotation-item__delete-button'
@@ -160,7 +165,25 @@ const AnnotationItem = ({
 					<MdDelete />
 				</OpenDialogButton> */}
 			</div>
-			<div>
+			<div className="d-flex justify-content-end">
+				<ColorPicker
+					onChange={ onChangeColorPicker }
+					value={ color.replace(/,1\)/, ',.3)') }
+				/>
+				{
+					isShowHideEnable && 
+					<Button 
+						className="ml-2"
+						outline
+						color="dark"
+						size="sm"
+						onClick={ () => onAnnotationShowHideClick({ name, status: HIDE }) }
+					>
+						End
+					</Button>
+				}
+			</div>
+			{/* <div>
 				{parentAnnotation && (
 					<div>
 						<Badge color='secondary'>{ t('annotationItemParent') }</Badge>
@@ -181,7 +204,7 @@ const AnnotationItem = ({
 						{childrenUI}
 					</div>
 				)}
-			</div>
+			</div> */}
 			{/* <Button
 				color='link'
 				className='d-flex align-items-center justify-content-between incident-list-toggle-button p-3 mt-2'
