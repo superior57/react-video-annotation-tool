@@ -21,6 +21,7 @@ import DrawableVideoPlayer from '../DrawableVideoPlayer/DrawableVideoPlayer.jsx'
 import { getLastAnnotationLabel, getUniqueKey } from '../../utils/utils';
 import './twoDimensionalVideo.scss';
 import ColorPicker, { getRgbColor } from "shared/components/ColorPicker/ColorPicker";
+import { InitialSate, sampleData } from "../../../../data/InitialState";
 
 class TwoDimensionalVideo extends Component {
 	constructor(props) {
@@ -63,6 +64,16 @@ class TwoDimensionalVideo extends Component {
 			defaultNumRootAnnotations: getLastAnnotationLabel(annotations, entities),
 		};
 		this.UndoRedoState = new UndoRedo();
+	}
+
+	componentDidMount() {
+		console.log("initial data ", sampleData);
+		this.setState((prevState) => {
+			
+			return {
+				...sampleData
+			}
+		})
 	}
 
 	/* ==================== video player ==================== */
@@ -179,7 +190,7 @@ class TwoDimensionalVideo extends Component {
 		const position = stage.getPointerPosition();
 		const uniqueKey = getUniqueKey();
 		// const color = colors[getRandomInt(colors.length)];
-		const color = "#4A90E2"
+		const color = "rgba(80, 227, 194, 75)"
 		this.setState((prevState) => {
 			this.UndoRedoState.save({ ...prevState, isAdding: false }); // Undo/Redo
 			const {
@@ -608,12 +619,13 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleSaveData = () => {
+		console.log(this.state)
 		const { annotations, entities } = this.state;
 		let data = {
 			annotations,
 			entities
 		};
-		data = JSON.stringify(data);
+		// data = JSON.stringify(data);
 		// data = JSON.parse(data);
 		console.log("sate in saving data", data);
 	}
