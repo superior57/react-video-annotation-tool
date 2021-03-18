@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { I18nextProvider, Translation } from 'react-i18next';
 import { normalize, denormalize, schema } from 'normalizr';
-import { Button, ButtonGroup } from 'reactstrap';
+import { Button, ButtonGroup, Spinner } from 'reactstrap';
 import { MdRedo, MdUndo, MdAdd } from 'react-icons/md';
 import 'bootstrap/dist/css/bootstrap.css';
 import PopupDialog from 'shared/components/PopupDialog/PopupDialog.jsx';
@@ -22,6 +22,56 @@ import { getLastAnnotationLabel, getUniqueKey } from '../../utils/utils';
 import './twoDimensionalVideo.scss';
 import ColorPicker, { getRgbColor } from "shared/components/ColorPicker/ColorPicker";
 import { InitialSate, sampleData } from "../../../../data/InitialState";
+
+const API = "https://dev.prosports.zone/api/v1/videos/73xK6JaeqV9MrGR2BlVO/annotations";
+
+const getAnnotationData = (callback) => {
+	const fetchHeaders = {
+		method: "GET",
+		headers: {
+			"Accept": "application/json"
+		},
+	}
+	fetch(API, fetchHeaders)
+		.then((res) => {
+			res.json()
+			.then(data => {
+				callback(data);				
+			})
+			.catch(error => console.log(error))
+		})
+		.catch(error => (console.log(error)))
+}
+
+const updateAnnotationData = (data, callback) => {
+	const fetchHeaders = {
+		method: "POST",
+		headers: {
+			'Accept': 'application/json',
+			'Content-Type': 'application/json',
+			'X-Requested-With': 'XMLHttpRequest',
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Methods': '*'
+		},
+		// mode: 'no-cors',
+		body: JSON.stringify(data)
+	}
+
+	fetch(API, fetchHeaders)
+		.then((res) => {
+			callback(res);
+		})
+		.catch(error => (console.log(error)))
+}
+
+const Alert = (props) => {
+
+	return (
+		props.open && <div class={`alert alert-${props.type}`} role="alert">
+			<strong>{props.title}</strong> {props.message}
+		</div>
+	)
+}
 
 class TwoDimensionalVideo extends Component {
 	constructor(props) {
@@ -62,18 +112,35 @@ class TwoDimensionalVideo extends Component {
 			dialogMessage: '',
 			defaultNumAnnotations: annotations.length,
 			defaultNumRootAnnotations: getLastAnnotationLabel(annotations, entities),
+			initialAnnotations: null,
+			notification: {
+				type: null,
+				message: null,
+				title: null,
+				open: false,
+			},
+			apicallStatus: "saved",
 		};
 		this.UndoRedoState = new UndoRedo();
 	}
 
 	componentDidMount() {
-		console.log("initial data ", sampleData);
-		this.setState((prevState) => {
-			
-			return {
-				...sampleData
-			}
-		})
+		this.initialState();
+	}
+
+	initialState = () => {
+		getAnnotationData(res => {
+			const data = JSON.parse(res.data);
+			console.log("data", data);		
+			if(data) {
+				this.setState((prevState) => {			
+					return {
+						...data,
+						initialAnnotations: data.annotations
+					}
+				})
+			}	
+		});
 	}
 
 	/* ==================== video player ==================== */
@@ -618,16 +685,52 @@ class TwoDimensionalVideo extends Component {
 		});
 	}
 
+	showNotification = ({title, message, type}) => {
+		this.setState(prevState => {
+			return {
+				notification: {
+					title,
+					message,
+					type,
+					open: true
+				}
+			}
+		});
+		setTimeout(() => {
+			this.setState(prevState => {
+				return {
+					notification: {
+						title: null,
+						message: null,
+						type: null,
+						open: false
+					}
+				}
+			});
+		}, 3000);
+	}
+
 	handleSaveData = () => {
-		console.log(this.state)
 		const { annotations, entities } = this.state;
 		let data = {
 			annotations,
 			entities
 		};
-		// data = JSON.stringify(data);
-		// data = JSON.parse(data);
-		console.log("sate in saving data", data);
+		data = JSON.stringify(data);
+		updateAnnotationData({
+			"video_id": 111,
+			"user_id": 1,
+			"data": data,
+			"video_uui": "73xK6JaeqV9MrGR2BlVO"
+		}, (res) => {
+			console.log("updated data");
+			this.initialState();
+			this.showNotification({
+				title: "Good job, ",
+				message: "Saved data successfully.",
+				type: "info",
+			});			
+		});
 	}
 
 	render() {
@@ -734,8 +837,16 @@ class TwoDimensionalVideo extends Component {
 		return (
 			<I18nextProvider i18n={ i18nextInstance }>
 				<TwoDimensionalVideoContext.Provider value={ twoDimensionalVideoContext }>
-					<div className={ rootClassName }>		
-						<div className='d-flex justify-content-around py-5 px-3 two-dimensional-video__main'>							
+					<div className={ rootClassName }>	
+						<Alert
+							title={this.state.notification.title} 
+							message={this.state.notification.message}
+							type={this.state.notification.type}
+							open={this.state.notification.open}
+						/>
+
+						<div className='d-flex justify-content-around py-5 px-3 two-dimensional-video__main'>		
+											
 							<div className='mb-3 two-dimensional-video__control-panel px-3 py-3 d-flex flex-wrap'>
 								{ controlPanelUI }
 								{ isSubmitted ? '' : (
@@ -743,8 +854,14 @@ class TwoDimensionalVideo extends Component {
 										<Button 
 											className="w-100"
 											color="success" 
-											onClick={ this.handleSaveData }										
-										>Save</Button>
+											onClick={ this.handleSaveData }			
+											// disabled={
+											// 	this.state.initialAnnotations == this.state.annotations
+											// }					
+										>
+											
+											Save
+										</Button>
 									</div>
 								)}
 							</div>

@@ -7,12 +7,6 @@ import { SketchPicker } from 'react-color'
 class ColorPicker extends React.Component {
   state = {
     displayColorPicker: false,
-    color: {
-      r: '241',
-      g: '112',
-      b: '19',
-      a: '1',
-    },
   };
 
   handleClick = () => {
@@ -69,7 +63,7 @@ class ColorPicker extends React.Component {
         </div>
         { this.state.displayColorPicker ? <div style={ styles.popover }>
           <div style={ styles.cover } onClick={ this.handleClose }/>
-          <SketchPicker color={ this.state.color } onChange={ this.handleChange } />
+          <SketchPicker color={ this.props.value } onChange={ this.handleChange } />
         </div> : null }
 
       </div>

@@ -16,3 +16,14 @@
     border-radius: 10px;
     box-shadow: 1px 8px 9px 0px #909090ba;
 }
+
+.alert {
+    border-radius: 0 !important;
+    text-align: center;
+}
+
+.alert-info {
+    color: #ffffff;
+    background-color: #03a9f4;
+    border-color: #03a9f4;
+}
