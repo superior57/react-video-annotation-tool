@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Rect } from 'react-konva';
+import { getShapeTypeKey } from "../../../models/shape";
 
 
 const handleMouseOver = (e, isManipulatable) => {
@@ -37,13 +38,14 @@ const handleMouseDown = (e, isManipulatable, onMouseDown) => {
 	onMouseDown(e);
 };
 
-const handleDragMove = (e, canvasWidth, canvasHeight) => {
+const handleDragMove = (e, canvasWidth, canvasHeight, shape) => {
 	const activeAnchor = e.target;
 	const group = activeAnchor.getParent();
 	const topLeft = group.get('.topLeft')[0]; const topRight = group.get('.topRight')[0]; const bottomRight = group.get('.bottomRight')[0]; const bottomLeft = group.get('.bottomLeft')[0];
 	const top = group.get('.top')[0]; const left = group.get('.left')[0]; const right = group.get('.right')[0]; const bottom = group.get('.bottom')[0];
-	const rect = group.get('Rect')[0];
-	const text = group.get('Text')[0];
+	const shapeKey = getShapeTypeKey(shape.type);
+	const obj = group.get(shapeKey)[0];
+	// const text = group.get('Text')[0];
 	let resizedWidth; let resizedHeight;
 	// set box resizing boundary
 	let absX = activeAnchor.getAbsolutePosition().x;
@@ -62,28 +64,28 @@ const handleDragMove = (e, canvasWidth, canvasHeight) => {
 		resizedHeight = bottomRight.y() - topLeft.y();
 		resizedWidth = bottomRight.x() - topLeft.x();
 		top.x(anchorX + resizedWidth / 2); left.y(anchorY + resizedHeight / 2); right.y(anchorY + resizedHeight / 2); bottom.x(anchorX + resizedWidth / 2);
-		text.x(anchorX); text.y(anchorY);
+		// text.x(anchorX); text.y(anchorY);
 		break;
 	case 'topRight':
 		topLeft.y(anchorY); top.y(anchorY); bottomRight.x(anchorX); right.x(anchorX);
 		resizedHeight = bottomRight.y() - topLeft.y();
 		resizedWidth = bottomRight.x() - topLeft.x();
 		top.x(anchorX - resizedWidth / 2); left.y(anchorY + resizedHeight / 2); right.y(anchorY + resizedHeight / 2); bottom.x(anchorX - resizedWidth / 2);
-		text.y(anchorY); text.x(anchorX - resizedWidth);
+		// text.y(anchorY); text.x(anchorX - resizedWidth);
 		break;
 	case 'bottomRight':
 		bottomLeft.y(anchorY); bottom.y(anchorY); topRight.x(anchorX); right.x(anchorX);
 		resizedHeight = bottomRight.y() - topLeft.y();
 		resizedWidth = bottomRight.x() - topLeft.x();
 		top.x(anchorX - resizedWidth / 2); left.y(anchorY - resizedHeight / 2); right.y(anchorY - resizedHeight / 2); bottom.x(anchorX - resizedWidth / 2);
-		text.x(anchorX - resizedWidth);
+		// text.x(anchorX - resizedWidth);
 		break;
 	case 'bottomLeft':
 		bottomRight.y(anchorY); bottom.y(anchorY); topLeft.x(anchorX); left.x(anchorX);
 		resizedHeight = bottomRight.y() - topLeft.y();
 		resizedWidth = bottomRight.x() - topLeft.x();
 		top.x(anchorX + resizedWidth / 2); left.y(anchorY - resizedHeight / 2); right.y(anchorY - resizedHeight / 2); bottom.x(anchorX + resizedWidth / 2);
-		text.x(anchorX);
+		// text.x(anchorX);
 		break;
 	case 'top':
 		topLeft.y(anchorY); topRight.y(anchorY);
@@ -91,7 +93,7 @@ const handleDragMove = (e, canvasWidth, canvasHeight) => {
 		resizedWidth = bottomRight.x() - topLeft.x();
 		top.x(topLeft.x() + resizedWidth / 2);
 		left.y(anchorY + resizedHeight / 2); right.y(anchorY + resizedHeight / 2);
-		text.y(anchorY);
+		// text.y(anchorY);
 		break;
 	case 'left':
 		topLeft.x(anchorX); bottomLeft.x(anchorX);
@@ -99,7 +101,7 @@ const handleDragMove = (e, canvasWidth, canvasHeight) => {
 		resizedWidth = bottomRight.x() - topLeft.x();
 		left.y(topLeft.y() + resizedHeight / 2);
 		top.x(anchorX + resizedWidth / 2); bottom.x(anchorX + resizedWidth / 2);
-		text.x(anchorX);
+		// text.x(anchorX);
 		break;
 	case 'right':
 		topRight.x(anchorX); bottomRight.x(anchorX);
@@ -107,7 +109,7 @@ const handleDragMove = (e, canvasWidth, canvasHeight) => {
 		resizedWidth = bottomRight.x() - topLeft.x();
 		right.y(topLeft.y() + resizedHeight / 2);
 		top.x(anchorX - resizedWidth / 2); bottom.x(anchorX - resizedWidth / 2);
-		text.x(anchorX - resizedWidth);
+		// text.x(anchorX - resizedWidth);
 		break;
 	case 'bottom':
 		bottomLeft.y(anchorY); bottomRight.y(anchorY);
@@ -119,6 +121,7 @@ const handleDragMove = (e, canvasWidth, canvasHeight) => {
 	default:
 		break;
 	}
+	const { width, height } = group.getClientRect();
 	group.x(topLeft.getAbsolutePosition().x);
 	group.y(topLeft.getAbsolutePosition().y);
 	topLeft.position({ x: 0, y: 0 });
@@ -129,10 +132,13 @@ const handleDragMove = (e, canvasWidth, canvasHeight) => {
 	right.position({ x: resizedWidth, y: resizedHeight / 2 });
 	bottom.position({ x: resizedWidth / 2, y: resizedHeight });
 	bottomRight.position({ x: resizedWidth, y: resizedHeight });
-	rect.position(topLeft.position());
-	rect.width(resizedWidth);
-	rect.height(resizedHeight);
-	text.position({ x: 0, y: 0 });
+	switch ( shape.type ) {
+		case "circle" : obj.position({x: width / 2, y: height / 2}); break;
+		default: obj.position(topLeft.position);
+	}
+	obj.width(resizedWidth);
+	obj.height(resizedHeight);
+	// text.position({ x: 0, y: 0 });
 };
 
 const ResizingAnchor = ({
@@ -146,6 +152,7 @@ const ResizingAnchor = ({
 	onMouseDown,
 	canvasWidth,
 	canvasHeight,
+	shape
 }) => (
 	<Rect
 		offsetX={ dotLength / 2 }
@@ -161,7 +168,7 @@ const ResizingAnchor = ({
 		height={ dotLength }
 		draggable={ isManipulatable }
 		dragOnTop={ false }
-		onDragMove={ e => handleDragMove(e, canvasWidth, canvasHeight) }
+		onDragMove={ e => handleDragMove(e, canvasWidth, canvasHeight, shape) }
 		onMouseDown={ e => handleMouseDown(e, isManipulatable, onMouseDown) }
 		onDragEnd={ (e) => {
 			document.body.style.cursor = 'default';
@@ -187,6 +194,7 @@ ResizingAnchor.propTypes = {
 	name: PropTypes.string,
 	onDragEnd: PropTypes.func,
 	onMouseDown: PropTypes.func,
+	shapeType: PropTypes.string
 };
 ResizingAnchor.defaultProps = {
 	dotLength: 6,

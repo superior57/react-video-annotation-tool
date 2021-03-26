@@ -2,10 +2,10 @@ import React, { useState, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 import {
-	Button, Collapse, Badge, ListGroupItem,
+	Button, Collapse, Badge, ListGroupItem, Input
 } from 'reactstrap';
 import { MdCallSplit, MdDelete } from 'react-icons/md';
-import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaChevronDown, FaChevronUp, FaPencilAlt } from 'react-icons/fa';
 import { IoMdEyeOff, IoMdEye } from 'react-icons/io';
 import { SPLIT, HIDE, SHOW } from 'models/2DVideo';
 import IncidentList from '../../IncidentList/IncidentList.jsx';
@@ -35,9 +35,11 @@ const AnnotationItem = ({
 		onAnnotationDeleteClick,
 		onAnnotationShowHideClick,
 		onAnnotationSplitClick,
-		onChangeColorPicker
+		onChangeColorPicker,
+		onAnnotationChangeLabel
 	} = twoDimensionalVideoContext;
-	const [isIncidentListOpen, setIsIncidentListOpen] = useState(false);
+	const [isIncidentListOpen, setIsIncidentListOpen] = useState(false);	
+
 	const { t } = useTranslation('twoDimensionalVideo');
 
 	const {
@@ -47,7 +49,12 @@ const AnnotationItem = ({
 		color,
 		parentName,
 		childrenNames,
+		labelText
 	} = itemData;
+
+	const [state, setState] = useState({
+		labelText: labelText
+	});
 
 	// console.log("itemdata in annotationItem", itemData);
 	const parentAnnotation = entities.annotations[parentName];
@@ -134,13 +141,22 @@ const AnnotationItem = ({
 				action
 			>
 				<div className='d-flex w-100 justify-content-between align-items-center'>
-					<div>{label + " Layout"}</div>
+					<div className="annotation-nav-wrap">{ state.labelText }</div>
 				</div>
 			</ListGroupItem>
 		);
 	}
 
 	rootClassName = `${rootClassName} annotation-item--highlight`;
+
+	const handleChangeLabel = (e) => {
+		setState({
+			...state,
+			labelText: e.target.value
+		});
+		onAnnotationChangeLabel(e.target.value);
+	}
+
 	return (
 		<ListGroupItem
 			className={ rootClassName }
@@ -148,28 +164,24 @@ const AnnotationItem = ({
 			style={ { borderColor: color.replace(/,1\)/, ',.3)') } }
 		>
 			<div className='d-flex align-items-center mb-2'>
-				<div className='mr-auto'><strong>{label+ ' Layout'}</strong></div>
+				<div className='mr-auto'>
+					{/* <strong>{label+ ' Layout'}</strong> */}
+					<Input 
+						value={state.labelText}
+						onChange={e => handleChangeLabel(e)}
+					/>
+				</div>
 				{/* {isSplitEnable && splitButtonUI} */}
 				{/* <ColorPicker />
 				{isShowHideEnable && hideButtonUI} */}
 				{/* {showButtonUI} */}
-				{/* <OpenDialogButton
-					className='d-flex align-items-center annotation-item__delete-button'
-					color='link'
-					title={ t('dialogTitleDelete') }
-					message={ t('dialogMessageDelete') }
-					isDialogDisabled={ isDialogDisabled.delete }
-					onYesClick={ () => onAnnotationDeleteClick(name) }
-					onDontShowAgainChange={ e => dispatchIsDialogDisabled({ type: isDialogDisabledConst.DELETE, value: e.target.checked }) }
-				>
-					<MdDelete />
-				</OpenDialogButton> */}
+				
 			</div>
 			<div className="d-flex justify-content-end">
-				<ColorPicker
+				{/* <ColorPicker
 					onChange={ onChangeColorPicker }
-					value={ color.replace(/,1\)/, ',.3)') }
-				/>
+					value={ color.replace(/,1\)/, ',.3)') }					
+				/> */}
 				{
 					isShowHideEnable && 
 					<Button 
@@ -182,6 +194,17 @@ const AnnotationItem = ({
 						End
 					</Button>
 				}
+				<OpenDialogButton
+					className='d-flex align-items-center annotation-item__delete-button ml-1'
+					color='link'
+					title={ t('dialogTitleDelete') }
+					message={ t('dialogMessageDelete') }
+					isDialogDisabled={ isDialogDisabled.delete }
+					onYesClick={ () => onAnnotationDeleteClick(name) }
+					onDontShowAgainChange={ e => dispatchIsDialogDisabled({ type: isDialogDisabledConst.DELETE, value: e.target.checked }) }
+				>
+					<MdDelete size={20} color="red" />
+				</OpenDialogButton>
 			</div>
 			{/* <div>
 				{parentAnnotation && (
@@ -215,8 +238,8 @@ const AnnotationItem = ({
 				{isIncidentListOpen ? <FaChevronUp /> : <FaChevronDown />}
 			</Button> */}
 			{/* <Collapse isOpen={ isIncidentListOpen }>
-				<IncidentList incidents={ incidents } annotationName={ name } />
 			</Collapse> */}
+			{/* <IncidentList incidents={ incidents } annotationName={ name } /> */}
 		</ListGroupItem>
 	);
 };

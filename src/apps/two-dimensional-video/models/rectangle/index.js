@@ -20,6 +20,8 @@ const Rectangle = ({
 	incidents = [],
 	childrenNames = [],
 	parentName = '',
+	shapeType = '',
+	labelText = ''
 }) => {
 	const state = {
 		color,
@@ -27,6 +29,8 @@ const Rectangle = ({
 		incidents,
 		childrenNames,
 		parentName,
+		shapeType,
+		labelText
 	};
 	return Object.assign(state, withBasicIdentities({ id, name, label }), canClearRedundantIncidents(state));
 };

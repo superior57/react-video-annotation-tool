@@ -68,6 +68,7 @@
     "react-konva": "^16.8.6",
     "react-player": "^1.11.1",
     "react-scroll": "^1.7.12",
+    "react-spinners": "^0.10.6",
     "reactstrap": "^6.5.0"
   },
   "peerDependencies": {

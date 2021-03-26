@@ -1,8 +1,8 @@
-import React, { Component } from 'react';
+import React, { Component, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { I18nextProvider, Translation } from 'react-i18next';
 import { normalize, denormalize, schema } from 'normalizr';
-import { Button, ButtonGroup, Spinner } from 'reactstrap';
+import { Button, ButtonGroup } from 'reactstrap';
 import { MdRedo, MdUndo, MdAdd } from 'react-icons/md';
 import 'bootstrap/dist/css/bootstrap.css';
 import PopupDialog from 'shared/components/PopupDialog/PopupDialog.jsx';
@@ -22,6 +22,10 @@ import { getLastAnnotationLabel, getUniqueKey } from '../../utils/utils';
 import './twoDimensionalVideo.scss';
 import ColorPicker, { getRgbColor } from "shared/components/ColorPicker/ColorPicker";
 import { InitialSate, sampleData } from "../../../../data/InitialState";
+import { SyncLoader as Loader } from "react-spinners";
+import { shapeTypeList as shapeList, getShapeTypeKey } from "../../models/shape";
+import { Polygon } from '../../models/polygon';
+import { Vertex } from '../../models/vertex';
 
 const API = "https://dev.prosports.zone/api/v1/videos/73xK6JaeqV9MrGR2BlVO/annotations";
 
@@ -65,10 +69,27 @@ const updateAnnotationData = (data, callback) => {
 }
 
 const Alert = (props) => {
-
 	return (
-		props.open && <div class={`alert alert-${props.type}`} role="alert">
+		props.open && <div className={`alert alert-${props.type}`} role="alert">
 			<strong>{props.title}</strong> {props.message}
+		</div>
+	)
+}
+
+const SelectShape = (props) => {	
+	return (
+		<div className={props.className}>
+			{ props.options.map(shape => 
+				<Button 
+					className={`mr-1`} 
+					outline={props.value != shape.value}
+					color="dark"
+					onClick={() => {props.onClick(shape.value)}}
+					key={shape.value}
+				>
+					{shape.label}
+				</Button>)
+			}
 		</div>
 	)
 }
@@ -120,8 +141,14 @@ class TwoDimensionalVideo extends Component {
 				open: false,
 			},
 			apicallStatus: "saved",
+			shape: 'circle'
 		};
 		this.UndoRedoState = new UndoRedo();
+		this.change = this.change.bind(this.state.focusing);
+	}
+
+	change(ev) {
+		console.log(this.state);
 	}
 
 	componentDidMount() {
@@ -129,17 +156,30 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	initialState = () => {
+		this.setState(prevState => {
+			return {
+				apicallStatus: "calling"
+			}
+		});
 		getAnnotationData(res => {
-			const data = JSON.parse(res.data);
-			console.log("data", data);		
-			if(data) {
+			try {
+				const data = JSON.parse(res.data);	
+				if(data) {
+					this.setState((prevState) => {			
+						return {
+							...data,
+							initialAnnotations: data.annotations,
+							apicallStatus: "called"
+						}
+					})
+				}
+			} catch (error) {
 				this.setState((prevState) => {			
 					return {
-						...data,
-						initialAnnotations: data.annotations
+						apicallStatus: "called"
 					}
 				})
-			}	
+			}
 		});
 	}
 
@@ -195,14 +235,27 @@ class TwoDimensionalVideo extends Component {
 			const { entities } = prevState;
 			let { focusing } = prevState;
 			if (focusing) {
-				const { incidents } = entities.annotations[focusing];
-				for (let i = 0; i < incidents.length; i += 1) {
-					if (played >= incidents[i].time) {
-						if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
-						if (incidents[i].status !== SHOW) focusing = '';
-						break;
-					} else if (i === incidents.length - 1) focusing = '';
+				const { shapeType } = entities.annotations[focusing];
+				if(shapeType == "polygon") {
+					const { vertices } = entities.annotations[focusing];
+					// for (let i = 0; i < vertices.length; i += 1) {
+					// 	if (played >= incidents[i].time) {
+					// 		if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
+					// 		if (incidents[i].status !== SHOW) focusing = '';
+					// 		break;
+					// 	} else if (i === incidents.length - 1) focusing = '';
+					// }
+				} else {
+					const { incidents } = entities.annotations[focusing];
+					for (let i = 0; i < incidents.length; i += 1) {
+						if (played >= incidents[i].time) {
+							if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
+							if (incidents[i].status !== SHOW) focusing = '';
+							break;
+						} else if (i === incidents.length - 1) focusing = '';
+					}
 				}
+				
 			}
 			return { played, focusing };
 		}, () => { this.player.seekTo(played); });
@@ -251,86 +304,133 @@ class TwoDimensionalVideo extends Component {
 	/* ==================== canvas ==================== */
 
 	handleCanvasStageMouseDown = (e) => {
-		const { isAdding } = this.state;
-		if (!isAdding) return;
+		const { isAdding, shape } = this.state;
 		const stage = e.target.getStage();
 		const position = stage.getPointerPosition();
 		const uniqueKey = getUniqueKey();
-		// const color = colors[getRandomInt(colors.length)];
-		const color = "rgba(80, 227, 194, 75)"
-		this.setState((prevState) => {
-			this.UndoRedoState.save({ ...prevState, isAdding: false }); // Undo/Redo
-			const {
-				annotations, entities,
-			} = prevState;
-			const incidents = [];
-			incidents.push(Incident({
-				id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, height: 1, width: 1, time: prevState.played,
-			}));
-			entities.annotations[`${uniqueKey}`] = Rectangle({
-				id: `${uniqueKey}`, name: `${uniqueKey}`, label: `${getLastAnnotationLabel(annotations, entities) + 1}`, color, incidents,
+		const color = "rgba(250, 8, 12, .37)"
+
+		if( shape == "polygon" || shape == "chain" ) {
+			let { x, y } = stage.getPointerPosition();
+			let vertices;
+			this.setState((prevState) => {
+				const {
+					isAdding, focusing, annotations, entities
+				} = prevState;
+				if (!isAdding) return {};
+				// prevent x, y exceeding boundary
+				x = x < 0 ? 0 : x; x = x > stage.width() ? stage.width() : x;
+				y = y < 0 ? 0 : y; y = y > stage.height() ? stage.height() : y;
+				this.UndoRedoState.save(prevState);
+				// first time adding
+				if (!focusing || !entities.annotations[focusing].vertices) {
+					vertices = [];
+					vertices.push(Vertex({
+						id: `${uniqueKey}`, name: `${uniqueKey}`, x, y,
+					}));
+					entities.annotations[`${uniqueKey}`] = Polygon({
+						id: `${uniqueKey}`, name: `${uniqueKey}`, color, vertices, shapeType: shape
+					});
+					return {
+						focusing: `${uniqueKey}`,
+						annotations: [...annotations, `${uniqueKey}`],
+						entities: { ...entities, annotations: entities.annotations },
+					};
+				}
+				// continuing adding
+				entities.annotations[focusing].vertices.push(Vertex({
+					id: `${uniqueKey}`, name: `${uniqueKey}`, x, y
+				}));
+				return { entities: { ...entities, annotations: entities.annotations } };
 			});
-			return {
-				isAdding: false,
-				focusing: `${uniqueKey}`,
-				annotations: [...annotations, `${uniqueKey}`],
-				entities: { ...entities, annotations: entities.annotations },
-			};
-		}, () => {
-			const group = stage.find(`.${uniqueKey}`)[0];
-			const bottomRight = group.get('.bottomRight')[0];
-			group.moveToTop();
-			bottomRight.moveToTop();
-			bottomRight.startDrag();
-		});
+		} else {
+			if (!isAdding) return;
+			
+			// const color = colors[getRandomInt(colors.length)];			
+			this.setState((prevState) => {
+				this.UndoRedoState.save({ ...prevState, isAdding: false }); // Undo/Redo
+				const {
+					annotations, entities,
+				} = prevState;
+				const incidents = [];
+				incidents.push(Incident({
+					id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, height: 1, width: 1, time: prevState.played,
+				}));
+				entities.annotations[`${uniqueKey}`] = Rectangle({
+					id: `${uniqueKey}`, name: `${uniqueKey}`, label: `${getLastAnnotationLabel(annotations, entities) + 1}`, color, incidents, shapeType: shape, labelText: `${getLastAnnotationLabel(annotations, entities) + 1} Layout`
+				});
+				return {
+					isAdding: false,
+					focusing: `${uniqueKey}`,
+					annotations: [...annotations, `${uniqueKey}`],
+					entities: { ...entities, annotations: entities.annotations },
+				};
+			}, () => {
+				const group = stage.find(`.${uniqueKey}`)[0];
+				const bottomRight = group.get('.bottomRight')[0];
+				group.moveToTop();
+				bottomRight.moveToTop();
+				bottomRight.startDrag();
+			});		
+		}
 	}
 
 	handleCanvasGroupMouseDown = (e) => {
 		const group = e.target.findAncestor('Group');
-		this.setState({ isPlaying: false, focusing: group.name() });
+		const { entities } = this.state;
+		const { shapeType } = entities.annotations[group.name()];
+		this.setState({ isPlaying: false, focusing: group.name(), shape: shapeType });
 	}
 
 	handleCanvasGroupDragEnd = (e) => {
 		if (e.target.getClassName() !== 'Group') return;
 		const group = e.target;
-		// const rect = group.get('Rect')[0];
-		const obj = group.get('Circle')[0];
-		const position = group.position();
-		const uniqueKey = getUniqueKey();
-		this.setState((prevState) => {
-			this.UndoRedoState.save(prevState);
-			const { entities, played } = prevState;
-			const { incidents } = entities.annotations[group.name()];
-			for (let i = 0; i < incidents.length; i += 1) {
-				if (played >= incidents[i].time) {
-					// skip elapsed incidents
-					if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
-					if (played === incidents[i].time) {
-						incidents[i].x = position.x; incidents[i].y = position.y; incidents[i].width = obj.width(); incidents[i].height = obj.height();
-						break;
-					}
-					if (i === incidents.length - 1) {
-						incidents.push(Incident({
-							id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, width: obj.width(), height: obj.height(), time: played,
+		const { entities, focusing } = this.state;
+		if (focusing) {
+			const { shapeType } = entities.annotations[focusing];
+			const shapeKey = getShapeTypeKey(shapeType);
+			let obj = group.get(shapeKey)[0];
+			const position = group.position();
+			const uniqueKey = getUniqueKey();
+			this.setState((prevState) => {
+				this.UndoRedoState.save(prevState);
+				const { entities, played } = prevState;
+				const { incidents } = entities.annotations[group.name()];
+				for (let i = 0; i < incidents.length; i += 1) {
+					if (played >= incidents[i].time) {
+						// skip elapsed incidents
+						if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
+						if (played === incidents[i].time) {
+							incidents[i].x = position.x; incidents[i].y = position.y; incidents[i].width = obj.width(); incidents[i].height = obj.height();
+							break;
+						}
+						if (i === incidents.length - 1) {
+							incidents.push(Incident({
+								id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, width: obj.width(), height: obj.height(), time: played,
+							}));
+							break;
+						}
+						incidents.splice(i + 1, 0, Incident({
+							id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, height: obj.height(), width: obj.width(), time: played,
 						}));
 						break;
 					}
-					incidents.splice(i + 1, 0, Incident({
-						id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, height: obj.height(), width: obj.width(), time: played,
-					}));
-					break;
 				}
-			}
-			return {};
-		});
+				return {};
+			});
+		}
 	}
 
 	handleCanvasDotMouseDown = (e) => {
+		console.log("handleCanvasDotMouseDown")
 		const group = e.target.findAncestor('Group');
-		this.setState({ focusing: group.name() });
+		const { entities } = this.state;
+		const { shape } = entities.annotations[group.name()];
+		this.setState({ focusing: group.name(), shape });
 	}
 
 	handleCanvasDotDragEnd = (e) => {
+		console.log("handleCanvasDotDragEnd")
 		const activeAnchor = e.target;
 		const group = activeAnchor.getParent();
 		const uniqueKey = getUniqueKey();
@@ -365,7 +465,11 @@ class TwoDimensionalVideo extends Component {
 		});
 	}
 
-	handleAnnotationItemClick = name => this.setState({ focusing: name });
+	handleAnnotationItemClick = name => {
+		const { entities } = this.state;
+		const { shapeType } = entities.annotations[name];
+		this.setState({ focusing: name, shape: shapeType });
+	};
 
 	handleIncidentItemClick = (incident) => {
 		const { annotationName, time } = incident;
@@ -486,6 +590,9 @@ class TwoDimensionalVideo extends Component {
 					break;
 				}
 			}
+
+			console.log("name in hidding func", name)
+			console.log("hidding ", entities.annotations[name]);
 			if (status === HIDE) entities.annotations[name].clearRedundantIncidents(status);
 			return { entities: { ...entities, annotations: entities.annotations } };
 		});
@@ -661,7 +768,7 @@ class TwoDimensionalVideo extends Component {
 					disabled={ isAdding }
 					color='primary'
 					onClick={ this.handleAddClick }
-					className='d-flex align-items-center float-left'
+					className='w-100 d-flex justify-content-center align-items-center float-left'
 				>
 					<MdAdd />
 					<Translation ns='twoDimensionalVideo'>
@@ -693,7 +800,8 @@ class TwoDimensionalVideo extends Component {
 					message,
 					type,
 					open: true
-				}
+				},				
+				apicallStatus: "saved"
 			}
 		});
 		setTimeout(() => {
@@ -710,12 +818,19 @@ class TwoDimensionalVideo extends Component {
 		}, 3000);
 	}
 
-	handleSaveData = () => {
+	handleSaveData = () => {		
+		this.setState(prevState => {
+			return {
+				apicallStatus: "calling",
+				focusing: ''
+			}
+		});
 		const { annotations, entities } = this.state;
 		let data = {
 			annotations,
 			entities
 		};
+		console.log(entities);
 		data = JSON.stringify(data);
 		updateAnnotationData({
 			"video_id": 111,
@@ -732,6 +847,80 @@ class TwoDimensionalVideo extends Component {
 			});			
 		});
 	}
+
+	handleShape(shape_value) {
+		this.setState(prevState => {
+			return {
+				shape: shape_value
+			}
+		});
+	}
+
+	/* ==================== polygon ==================== */
+	handleCanvasVertexMouseDown = (e) => {
+		const activeVertex = e.target;
+		const group = activeVertex.getParent();
+		this.setState((prevState) => {
+			const { isAdding, focusing, entities } = prevState;
+			if (isAdding) {
+				const { annotations } = entities;
+				if (group.name() === focusing && annotations[focusing].vertices[0].name === activeVertex.name()) {
+					annotations[focusing].isClosed = true;
+					return { isAdding: false, entities: { ...entities, annotations } };
+				}
+				return {};
+			}
+			return { focusing: group.name() };
+		});
+	}
+
+	handleCanvasFocusing = (e) => {
+		const activeShape = e.target;
+		this.setState((prevState) => {
+			if (prevState.isAdding) return {};
+			return { focusing: activeShape.name() };
+		});
+	}
+
+	handleCanvasVertexDragEnd = (e) => {
+		console.log("handleCanvasVertexDragEnd")
+		const activeVertex = e.target;
+		const group = activeVertex.getParent();
+		const stage = e.target.getStage();
+		const position = stage.getPointerPosition();
+		this.setState((prevState) => {
+			const {
+				isAdding, entities
+			} = prevState;
+			if (isAdding) return {};
+			const { annotations } = entities;
+			const vertices = annotations[group.name()].vertices.map((v) => {
+				if (v.name !== activeVertex.name()) return v;
+				// prevent x, y exceeding boundary
+				let x = activeVertex.x(); let y = activeVertex.y();
+				x = x < 0 ? 0 : x; x = x > stage.width() ? stage.width() : x;
+				y = y < 0 ? 0 : y; y = y > stage.height() ? stage.height() : y;
+				return { ...v, x, y };
+			});
+			annotations[group.name()].vertices = vertices;
+			return { entities: { ...entities, annotations } };
+		});
+	}
+
+	handleAnnotationChangeLabel = (string) => {
+		const { focusing, entities } = this.state;
+		this.setState(prevState => {
+			const { annotations } = entities;
+			annotations[focusing].labelText = string;
+			return {
+				entities: {
+					...entities,
+					annotations
+				}
+			}
+		})
+	}
+	
 
 	render() {
 		const {
@@ -750,6 +939,7 @@ class TwoDimensionalVideo extends Component {
 			isDialogOpen,
 			dialogTitle,
 			dialogMessage,
+			shape,
 		} = this.state;
 		const {
 			className,
@@ -780,6 +970,7 @@ class TwoDimensionalVideo extends Component {
 			isShowHideEnable,
 			emptyCheckAnnotationItemWarningText,
 			emptyAnnotationReminderText,
+			shape,
 
 			onVideoReady: this.handleVideoReady,
 			onVideoProgress: this.handleVideoProgress,
@@ -804,34 +995,38 @@ class TwoDimensionalVideo extends Component {
 			onIncidentItemDeleteClick: this.handleIncidentItemDelete,
 			onVideoNextSecFrame: this.handleVideoNextSecFrame,
 			onVideoPrevSecFrame: this.handleVideoPrevSecFrame,
-			onChangeColorPicker: this.handleChangeColorPicker
+			onChangeColorPicker: this.handleChangeColorPicker,
+			onCanvasVertexMouseDown: this.handleCanvasVertexMouseDown,
+			onCanvasLineMouseDown: this.handleCanvasFocusing,
+			onCanvasVertexDragEnd: this.handleCanvasVertexDragEnd,
+			onAnnotationChangeLabel: this.handleAnnotationChangeLabel,
 		};
 
 		let controlPanelUI = null;
-		if (isSubmitted) {
-			controlPanelUI = (
-				<Review
-					height={ annotationHeight }
-					onConfirmSubmit={ this.handleSubmit }
-					onCancelSubmit={ this.handleReviewCancelSubmission }
-				/>
-			);
-		} else {
-			controlPanelUI = (
-				<div className="w-100 mb-auto">
-					<div className='pb-3 clearfix'>
-						{this.renderAddButtonUI()}
-						{/* <ButtonGroup className='float-right'>
-							<Button disabled={ this.UndoRedoState.previous.length === 0 } outline onClick={ this.handleUndo }><MdUndo /></Button>
-							<Button disabled={ this.UndoRedoState.next.length === 0 } outline onClick={ this.handleRedo }><MdRedo /></Button>
-						</ButtonGroup> */}
-					</div>
-					<AnnotationList />
-				</div>
-			);
-		}
+		// if (isSubmitted) {
+		// 	controlPanelUI = (
+		// 		<Review
+		// 			height={ annotationHeight }
+		// 			onConfirmSubmit={ this.handleSubmit }
+		// 			onCancelSubmit={ this.handleReviewCancelSubmission }
+		// 		/>
+		// 	);
+		// } else {
+		controlPanelUI = (
+			<div className="w-100 mb-auto overflow-auto" style={{
+				maxHeight: 'calc(100% - 100px)'
+			}}>
+				
+				<AnnotationList />
+			</div>
+		);
+		// }
 
-		
+		const options = [
+			{ value: 'chocolate', label: 'Chocolate' },
+			{ value: 'strawberry', label: 'Strawberry' },
+			{ value: 'vanilla', label: 'Vanilla' }
+		]
 
 		const rootClassName = `two-dimensional-video${className ? ` ${className}` : ''}`;
 		return (
@@ -847,32 +1042,51 @@ class TwoDimensionalVideo extends Component {
 
 						<div className='d-flex justify-content-around py-5 px-3 two-dimensional-video__main'>		
 											
-							<div className='mb-3 two-dimensional-video__control-panel px-3 py-3 d-flex flex-wrap'>
+							<div className='mb-3 two-dimensional-video__control-panel px-3 py-3 position-relative'>
+								<div className='w-100 pb-3 clearfix'>
+									{this.renderAddButtonUI()}
+									{/* <ButtonGroup className='float-right'>
+										<Button disabled={ this.UndoRedoState.previous.length === 0 } outline onClick={ this.handleUndo }><MdUndo /></Button>
+										<Button disabled={ this.UndoRedoState.next.length === 0 } outline onClick={ this.handleRedo }><MdRedo /></Button>
+									</ButtonGroup> */}
+								</div>
 								{ controlPanelUI }
 								{ isSubmitted ? '' : (
-									<div className="w-100 pt-3 mt-auto">
+									<div className="w-100 pt-3 px-3 mb-3 save-wrap">
 										<Button 
 											className="w-100"
 											color="success" 
 											onClick={ this.handleSaveData }			
-											// disabled={
-											// 	this.state.initialAnnotations == this.state.annotations
-											// }					
-										>
-											
-											Save
+											disabled={this.state.apicallStatus == "calling"}					
+										>		
+											<Loader color={'#FFF'} loading={this.state.apicallStatus == "calling"} size={5} />									
+											{
+												this.state.apicallStatus != "calling" && <span>Save</span>
+											}
 										</Button>
 									</div>
 								)}
 							</div>
 
-							<div className='ml-3' style={{
-								width: "100%"
-							}}>
-								{/* <div className="py-3 px-5 custom-card">
+							<div className='w-100 ml-3 d-flex flex-wrap'>
+								<div className="d-flex py-3 px-5 custom-card w-100" style={{
+									maxHeight: 70
+								}}>
+									<SelectShape 
+										className="mr-2"
+										value={this.state.shape}
+										options={shapeList}
+										onClick={(value) => {this.handleShape(value)} }
+									/>
+									{
+										this.state.focusing && <ColorPicker
+											onChange={ this.handleChangeColorPicker }
+											value={ this.state.focusing ? this.state.entities.annotations[this.state.focusing].color.replace(/,1\)/, ',.3)') : '' }					
+										/>
+									}
 									
-								</div> */}
-								<div className='px-3 mt-3' style={ { width: '100%' } }>
+								</div>
+								<div className='px-3' style={ { width: '100%' } }>
 									<DrawableVideoPlayer />
 								</div>
 							</div>

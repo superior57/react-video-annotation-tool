@@ -5,3 +5,4 @@ export const withBasicIdentities = ({
 }) => ({
 	id, name, label,
 });
+

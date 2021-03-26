@@ -188,11 +188,11 @@ const HomePage = () => {
 
 	return (
 		<div>
-			<div className='mb-5'>
+			<div className=''>
 				<TwoDimensionalVideo
 					onSubmit={ handleSubmit }
 					url={videoSrc}
-					videoWidth={ 900 }
+					videoWidth={ 1000 }
 					hasReview
 					isEmptyCheckEnable
 					isSplitEnable

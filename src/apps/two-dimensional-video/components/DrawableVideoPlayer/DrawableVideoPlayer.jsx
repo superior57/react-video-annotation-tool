@@ -25,6 +25,7 @@ const DrawableVideoPlayer = ({
 		isAdding,
 		isEmptyCheckEnable,
 		playerRef,
+		shape,
 		onVideoReady,
 		onVideoProgress,
 		onVideoDuration,
@@ -41,13 +42,16 @@ const DrawableVideoPlayer = ({
 		onCanvasDotMouseDown,
 		onCanvasDotDragEnd,
 		onVideoNextSecFrame,
-		onVideoPrevSecFrame
+		onVideoPrevSecFrame,
+		onCanvasVertexMouseDown,
+		onCanvasLineMouseDown,
+		onCanvasVertexDragEnd
 	} = twoDimensionalVideoContext;
 
 	const rootClassName = `drawable-video-player${className ? ` ${className}` : ''}`;
 	return (
 		<div className={ rootClassName }>
-			<div className='drawable-video-player__player-canvas-wrapper d-flex justify-content-center'>
+			<div className='drawable-video-player__player-canvas-wrapper d-flex justify-content-center mb-3'>
 				<VideoPlayerScreen
 					playerRef={ playerRef }
 					onReady={ onVideoReady }
@@ -74,6 +78,9 @@ const DrawableVideoPlayer = ({
 					onDotMouseDown={ onCanvasDotMouseDown }
 					onDotDragEnd={ onCanvasDotDragEnd }
 					isEmptyCheckEnable={ isEmptyCheckEnable }
+					onVertexMouseDown={onCanvasVertexMouseDown}
+					onLineMouseDown={onCanvasLineMouseDown}
+					onVertexDragEnd={onCanvasVertexDragEnd}
 				/>
 			</div>
 			<VideoPlayerControl

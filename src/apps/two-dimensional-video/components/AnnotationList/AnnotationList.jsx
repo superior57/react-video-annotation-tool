@@ -61,7 +61,7 @@ const AnnotationList = ({ className }) => {
 
 	const rootClassName = `annotation-list${className ? ` ${className}` : ''}`;
 	return (
-		<ListGroup className={ rootClassName } id='annotation-list' style={ { maxHeight: height - 60 } }>{itemsUI}</ListGroup>
+		<ListGroup className={ rootClassName } id='annotation-list'>{itemsUI}</ListGroup>
 	);
 };
 

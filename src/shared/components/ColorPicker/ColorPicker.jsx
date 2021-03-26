@@ -10,6 +10,7 @@ class ColorPicker extends React.Component {
   };
 
   handleClick = () => {
+    console.log("clicked");
     this.setState({ displayColorPicker: !this.state.displayColorPicker })
   };
 
@@ -43,7 +44,7 @@ class ColorPicker extends React.Component {
           cursor: 'pointer',
         },
         popover: {
-          position: 'fixed',
+          position: 'absolute',
           zIndex: '2',
         },
         cover: {

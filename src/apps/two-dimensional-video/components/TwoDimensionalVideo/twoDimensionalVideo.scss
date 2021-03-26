@@ -5,6 +5,7 @@
 
     &__control-panel {
         min-width: 300px;
+        max-width: 300px;
         background: #ffce3a12;
         border-radius: 10px;
         box-shadow: 1px 8px 9px 0px #909090ba;
@@ -20,10 +21,33 @@
 .alert {
     border-radius: 0 !important;
     text-align: center;
+    color: #FFF;
+    background-color: #03a9f4ba;
+    border-color: #03a9f4ba;
+    position: fixed;
+    width: 100%;
+    transition: 400ms;
 }
 
 .alert-info {
-    color: #ffffff;
-    background-color: #03a9f4;
-    border-color: #03a9f4;
+    // color: #0b0b0b;
+    // background-color: #03a9f4ba;
+    // border-color: #03a9f4ba;
+    // position: fixed;
+    // width: 100%;
+}
+
+.btn:focus {
+    // box-shadow: none;
+}
+
+.two-dimensional-video__main {
+    height: 100vh;
+}
+
+.save-wrap {
+    position: absolute;
+    left: 0;
+    top: auto;
+    bottom: 0;
 }
