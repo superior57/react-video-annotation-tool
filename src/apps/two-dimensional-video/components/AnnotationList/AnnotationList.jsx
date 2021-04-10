@@ -40,17 +40,16 @@ const AnnotationList = ({ className }) => {
 	}, [focusing]);
 
 	const sortedAnnotations = getSortedAnnotationsByLabel(annotations, entities);
-	// console.log("sortedannotations in entities", entities);
 	const itemsUI = sortedAnnotations
 		.filter(ann => entities && entities.annotations[ann] && entities.annotations[ann].isManipulatable)
-		.map(ann => (
-			<AnnotationItem
-				key={ ann }
-				itemData={ entities.annotations[ann] }
-				isDialogDisabled={ isDialogDisabled }
-				dispatchIsDialogDisabled={ dispatchIsDialogDisabled }
-			/>
-		));
+		.map(ann => {
+			return <AnnotationItem
+			key={ ann }
+			itemData={ entities.annotations[ann] }
+			isDialogDisabled={ isDialogDisabled }
+			dispatchIsDialogDisabled={ dispatchIsDialogDisabled }
+		/>
+		});
 	if (itemsUI.length === 0) {
 		return (
 			<div className='d-flex align-items-center justify-content-center' style={ { height: height - 60 } }>

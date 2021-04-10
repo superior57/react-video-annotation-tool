@@ -11,6 +11,7 @@ import './canvas.scss';
 import { getShapeTypeKey } from "../../models/shape";
 
 const handleGroupDragMove = (e, canvasWidth, canvasHeight, shapeType) => {
+	// console.log("dragging");
 	if (e.target.getClassName() !== 'Group') return;
 	const group = e.target;
 	const topLeft = group.get('.topLeft')[0];
@@ -58,14 +59,14 @@ const handleVertexMouseOver = () => {
 	document.body.style.cursor = 'move';
 };
 
-const handleVertexDragMove = (e, isAdding, entities) => {
+const handleVertexDragMove = (e, isAdding, entities, i) => {
 	if (isAdding) return;
 	document.body.style.cursor = 'move';
 	const activeVertex = e.target;
 	const group = activeVertex.getParent();
 	const line = group.get('Line')[0];
 	const linePoints = [];
-	entities.annotations[group.name()].vertices.forEach((v) => {
+	entities.annotations[group.name()].incidents[i].vertices.forEach((v) => {
 		if (v.name !== activeVertex.name()) {
 			linePoints.push(v.x); linePoints.push(v.y);
 			return;
@@ -86,7 +87,7 @@ const Canvas = ({
 	isAdding,
 	entities,
 	annotations,
-	isEmptyCheckEnable,
+	isEmptyCheckEnable, 
 	onStageMouseDown,
 	onGroupDragEnd,
 	onGroupMouseDown,
@@ -94,7 +95,8 @@ const Canvas = ({
 	onDotMouseDown,
 	onVertexMouseDown,
 	onLineMouseDown,
-	onVertexDragEnd
+	onVertexDragEnd,
+	onGroupMove
 }) => {
 	const { t } = useTranslation('twoDimensionalVideo');
 	const layerItems = [];
@@ -102,209 +104,269 @@ const Canvas = ({
 		// console.log(entities.annotations[annotationId])
 		const { color, id, name, shapeType, isManipulatable } = entities.annotations[annotationId];
 		const isCurrent = focusing == id;
-		// console.log("type => ", shapeType);
+		// console.log("isManipulatable => ", isManipulatable, entities.annotations[annotationId]);
 
 		if( shapeType == "polygon" ) {
-			const { isClosed, vertices } = entities.annotations[annotationId];
+			const { isClosed, incidents } = entities.annotations[annotationId];
 			const colorWithOpacity = color.replace(/,1\)/, ',.15)');
-
 			const verticesUI = [];
 			const linePoints = [];
 			const startPoint = {};
-			vertices.forEach((v, i) => {
-				if (i === 0) {
-					startPoint.x = v.x; startPoint.y = v.y;
-				}
-				if (isAdding && focusing === name && i === 0) {
-					verticesUI.push(
-						<Circle
-							x={ v.x }
-							y={ v.y }
-							key={ v.name }
-							name={ v.name }
-							radius={ CONST.DOT_LENGTH * 1.1 }
+			for (let i = 0; i < incidents.length; i ++) {
+				let x, y;
+				if (played >= incidents[i].time) {
+					if (i !== incidents.length - 1 && played >= incidents[i + 1].time) {
+						continue;
+					}
+					if (incidents[i].status !== SHOW) break; // todo
+
+					incidents[i].vertices.forEach((v, vi) => {
+						const { name } = v;
+						if (i === incidents.length - 1) {
+							({
+								x,
+								y,
+							} = v);
+						} else {
+							const interpoPos = getInterpolatedData({
+								startIncident: incidents[i],
+								endIncident: incidents[i + 1],
+								currentTime: played,
+								type: INTERPOLATION_TYPE.POSITION,
+								vname: name,
+								shapeType
+							});
+							({
+								x, y,
+							} = interpoPos);
+						}	
+
+						if (vi === 0) {
+							startPoint.x = v.x; startPoint.y = v.y;
+						}
+						if (isAdding && focusing === name && vi === 0) {
+							verticesUI.push(
+								<Circle
+									x={ x }
+									y={ y }
+									key={ v.name }
+									name={ v.name }
+									radius={ CONST.DOT_LENGTH * 1.1 }
+									stroke={ color }
+									fill={ colorWithOpacity }
+									strokeWidth={ 1 }
+									draggable
+									dragOnTop={ false }
+									onMouseDown={ onVertexMouseDown }
+									onMouseOver={ handleFirstVertexMouseOver }
+									onMouseOut={ () => handleMouseOut(isAdding) }
+									onFocus={ () => {} }
+									onBlur={ () => {} }
+								/>,
+							);
+						} else {
+							verticesUI.push(
+								<Rect
+									offsetX={ CONST.DOT_LENGTH / 2 }
+									offsetY={ CONST.DOT_LENGTH / 2 }
+									x={ x }
+									y={ y }
+									key={ v.name }
+									name={ v.name }
+									stroke={ color }
+									fill={ color }
+									strokeWidth={ 0 }
+									width={ CONST.DOT_LENGTH }
+									height={ CONST.DOT_LENGTH }
+									draggable
+									dragOnTop={ false }
+									onMouseDown={ onVertexMouseDown }
+									onMouseOver={ handleVertexMouseOver }
+									onMouseOut={ () => handleMouseOut(isAdding) }
+									onDragEnd={ onVertexDragEnd }
+									onDragMove={ e => handleVertexDragMove(e, isAdding, entities, i) }
+									onFocus={ () => {} }
+									onBlur={ () => {} }
+								/>,
+							);
+						}
+						linePoints.push(x); linePoints.push(y);
+					});
+					const lineUI = (
+						<Line
+							name={ name }
+							points={ linePoints }
+							closed={ isClosed }
+							fill={ focusing === name ? colorWithOpacity : '' }
 							stroke={ color }
-							fill={ colorWithOpacity }
 							strokeWidth={ 1 }
-							draggable
-							dragOnTop={ false }
-							onMouseDown={ onVertexMouseDown }
-							onMouseOver={ handleFirstVertexMouseOver }
+							lineCap='round'
+							lineJoin='round'
+							onMouseDown={ onLineMouseDown }
+							onMouseOver={ () => handleMouseOver(isAdding) }
+							onMouseLeave={ () => handleMouseLeave(isAdding) }
 							onMouseOut={ () => handleMouseOut(isAdding) }
-							onFocus={ () => {} }
-							onBlur={ () => {} }
-						/>,
-					);
-				} else {
-					verticesUI.push(
-						<Rect
-							offsetX={ CONST.DOT_LENGTH / 2 }
-							offsetY={ CONST.DOT_LENGTH / 2 }
-							x={ v.x }
-							y={ v.y }
-							key={ v.name }
-							name={ v.name }
-							stroke={ color }
-							fill={ color }
-							strokeWidth={ 0 }
-							width={ CONST.DOT_LENGTH }
-							height={ CONST.DOT_LENGTH }
-							draggable
-							dragOnTop={ false }
-							onMouseDown={ onVertexMouseDown }
-							onMouseOver={ handleVertexMouseOver }
-							onMouseOut={ () => handleMouseOut(isAdding) }
-							onDragEnd={ onVertexDragEnd }
-							onDragMove={ e => handleVertexDragMove(e, isAdding, entities) }
-							onFocus={ () => {} }
-							onBlur={ () => {} }
-						/>,
-					);
-				}
-				linePoints.push(v.x); linePoints.push(v.y);
-			});
-			const lineUI = (
-				<Line
-					name={ name }
-					points={ linePoints }
-					closed={ isClosed }
-					fill={ focusing === name ? colorWithOpacity : '' }
-					stroke={ color }
-					strokeWidth={ 1 }
-					lineCap='round'
-					lineJoin='round'
-					onMouseDown={ onLineMouseDown }
-					onMouseOver={ () => handleMouseOver(isAdding) }
-					onMouseLeave={ () => handleMouseLeave(isAdding) }
-					onMouseOut={ () => handleMouseOut(isAdding) }
-					onFocus={ () => {} }
-					onBlur={ () => {} }
-				/>
-			);
-
-			layerItems.push(
-				// <Group key={ name } name={ name }>
-				// 	{lineUI}
-				// 	{verticesUI}
-				// </Group>
-
-				<Group
-					// x={ x }
-					// y={ y }
-					key={ name }
-					id={ id }
-					name={ name }
-					draggable={ true }
-					// onMouseDown={ (e) => {
-					// 	const group = e.target.findAncestor('Group');
-					// 	// if (!isManipulatable) return;
-					// 	group.moveToTop();
-					// 	onGroupMouseDown(e);
-					// } }
-					// onDragEnd={ (e) => {
-					// 	if (e.target.getClassName() !== 'Group') return;
-					// 	onGroupDragEnd(e);
-					// } }
-					// onDragMove={ e => handleGroupDragMove(e, canvasWidth, canvasHeight, shapeType) }
-					>
-					{lineUI}
-					{verticesUI}
-				</Group>
-			);
-		} else if ( shapeType == "chain" ) {
-			const { isClosed, vertices } = entities.annotations[annotationId];
-			const colorWithOpacity = color.replace(/,1\)/, ',.15)');
-
-			const verticesUI = [];
-			const linePoints = [];
-			const startPoint = {};
-			vertices.forEach((v, i) => {
-				if (i === 0) {
-					startPoint.x = v.x; startPoint.y = v.y;
-				}
-				if (isAdding && focusing === name && i === 0) {
-					console.log("clicked first point", i);
-					verticesUI.push(
-						<Circle
-							x={ v.x }
-							y={ v.y }
-							key={ v.name }
-							name={ v.name }
-							radius={ CONST.DOT_LENGTH * 3 }
-							stroke={ color }
-							fill={ '' }
-							strokeWidth={ 7 }
-							draggable
-							dragOnTop={ false }
-							onMouseDown={ onVertexMouseDown }
-							onMouseOver={ handleFirstVertexMouseOver }
-							onMouseOut={ () => handleMouseOut(isAdding) }
-							onFocus={ () => {} }
-							onBlur={ () => {} }
-						/>,
-					);
-				} else {
-					verticesUI.push(
-						<Circle
-							x={ v.x }
-							y={ v.y }
-							key={ v.name }
-							name={ v.name }
-							radius={ CONST.DOT_LENGTH * 3 }
-							stroke={ color }
-							fill={ '' }
-							strokeWidth={ 7 }
-							draggable
-							dragOnTop={ false }
-							onMouseDown={ onVertexMouseDown }
-							onMouseOver={ handleVertexMouseOver }
-							onMouseOut={ () => handleMouseOut(isAdding) }
-							onDragEnd={ onVertexDragEnd }
-							onDragMove={ e => handleVertexDragMove(e, isAdding, entities) }
 							onFocus={ () => {} }
 							onBlur={ () => {} }
 						/>
 					);
+		
+					layerItems.push(		
+						<Group
+							key={ name }
+							id={ id }
+							name={ name }
+							// draggable={ isManipulatable }
+							onMouseDown={ (e) => {
+								const group = e.target.findAncestor('Group');
+								if (!isManipulatable) return;
+								group.moveToTop();
+								onGroupMouseDown(e);
+							} }
+							onDragEnd={ (e) => {
+								if (e.target.getClassName() !== 'Group') return;
+								onGroupDragEnd(e);
+							} }
+							onDragMove={ e => handleGroupDragMove(e, canvasWidth, canvasHeight, shapeType) }
+							onMouseMove={e => onGroupMove(e)}
+						>
+							{lineUI}
+							{verticesUI}
+						</Group>
+					);
 				}
-				linePoints.push(v.x); linePoints.push(v.y);
-			});
-			const lineUI = (
-				<Line
-					name={ name }
-					points={ linePoints }
-					closed={ isClosed }
-					fill={ focusing === name ? colorWithOpacity : '' }
-					stroke={ color }
-					strokeWidth={ 10 }
-					lineCap='round'
-					lineJoin='round'
-					onMouseDown={ onLineMouseDown }
-					onMouseOver={ () => handleMouseOver(isAdding) }
-					onMouseLeave={ () => handleMouseLeave(isAdding) }
-					onMouseOut={ () => handleMouseOut(isAdding) }
-					onFocus={ () => {} }
-					onBlur={ () => {} }
-				/>
-			);
+			}			
+		} else if ( shapeType == "chain" ) {
+			const { isClosed, incidents } = entities.annotations[annotationId];
+			const colorWithOpacity = color.replace(/,1\)/, ',.15)');
+			const verticesUI = [];
+			const linePoints = [];
+			const startPoint = {};
+			for ( let i = 0; i < incidents.length; i ++ ) {
+				let x, y;
+				if (played >= incidents[i].time) {
+					if (i !== incidents.length - 1 && played >= incidents[i + 1].time) {
+						continue;
+					}
+					if (incidents[i].status !== SHOW) break; // todo					
 
-			layerItems.push(
-				<Group
-					// x={ x }
-					// y={ y }
-					key={ name }
-					id={ id }
-					name={ name }
-					draggable={ true }
-					>
-					{lineUI}
-					{verticesUI}
-				</Group>
-			);
-		} 
-		else {
+					incidents[i].vertices.forEach((v, vi) => {
+						const { name } = v;
+						if (i === incidents.length - 1) {
+							({
+								x,
+								y,
+							} = v);
+						} else {
+							const interpoPos = getInterpolatedData({
+								startIncident: incidents[i],
+								endIncident: incidents[i + 1],
+								currentTime: played,
+								type: INTERPOLATION_TYPE.POSITION,
+								vname: name,
+								shapeType
+							});
+							({
+								x, y,
+							} = interpoPos);
+						}	
+
+						if (vi === 0) {
+							startPoint.x = v.x; startPoint.y = v.y;
+						}
+						if (isAdding && focusing === name && vi === 0) {
+							verticesUI.push(
+								<Circle
+									x={ x }
+									y={ y }
+									key={ v.name }
+									name={ v.name }
+									radius={ CONST.DOT_LENGTH * 3 }
+									stroke={ color }
+									fill={ '' }
+									strokeWidth={ 7 }
+									draggable
+									dragOnTop={ false }
+									onMouseDown={ onVertexMouseDown }
+									onMouseOver={ handleFirstVertexMouseOver }
+									onMouseOut={ () => handleMouseOut(isAdding) }
+									onFocus={ () => {} }
+									onBlur={ () => {} }
+								/>,
+							);
+						} else {
+							verticesUI.push(
+								<Circle
+									x={ x }
+									y={ y }
+									key={ v.name }
+									name={ v.name }
+									radius={ CONST.DOT_LENGTH * 3 }
+									stroke={ color }
+									fill={ '' }
+									strokeWidth={ 7 }
+									draggable
+									dragOnTop={ false }
+									onMouseDown={ onVertexMouseDown }
+									onMouseOver={ handleVertexMouseOver }
+									onMouseOut={ () => handleMouseOut(isAdding) }
+									onDragEnd={ onVertexDragEnd }
+									onDragMove={ e => handleVertexDragMove(e, isAdding, entities, i) }
+									onFocus={ () => {} }
+									onBlur={ () => {} }
+								/>
+							);
+						}
+						linePoints.push(x); linePoints.push(y);
+					});
+					const lineUI = (
+						<Line
+							name={ name }
+							points={ linePoints }
+							closed={ false }
+							fill={ focusing === name ? colorWithOpacity : '' }
+							stroke={ color }
+							strokeWidth={ 10 }
+							lineCap='round'
+							lineJoin='round'
+							onMouseDown={ onLineMouseDown }
+							onMouseOver={ () => handleMouseOver(isAdding) }
+							onMouseLeave={ () => handleMouseLeave(isAdding) }
+							onMouseOut={ () => handleMouseOut(isAdding) }
+							onFocus={ () => {} }
+							onBlur={ () => {} }
+						/>
+					);
+		
+					layerItems.push(
+						<Group
+							key={ name }
+							id={ id }
+							name={ name }
+							// draggable={ isManipulatable }
+							onMouseDown={ (e) => {
+								const group = e.target.findAncestor('Group');
+								if (!isManipulatable) return;
+								group.moveToTop();
+								onGroupMouseDown(e);
+							} }
+							onDragEnd={ (e) => {
+								if (e.target.getClassName() !== 'Group') return;
+								onGroupDragEnd(e);
+							} }
+							onDragMove={ e => handleGroupDragMove(e, canvasWidth, canvasHeight, shapeType) }
+							onMouseMove={e => onGroupMove(e)}
+						>
+							{lineUI}
+							{verticesUI}
+						</Group>
+					);
+				}
+			}			
+		} else {
 			const { incidents, labelText } = entities.annotations[annotationId];
-			// console.log("annotation info in canvas", entities.annotations[annotationId])
-	
+			
+			console.log("incidents rec =>", incidents);
 			for (let i = 0; i < incidents.length; i++) {
 				let x;
 				let y;

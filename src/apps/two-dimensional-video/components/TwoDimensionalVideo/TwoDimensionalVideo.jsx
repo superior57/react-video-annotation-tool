@@ -1,5 +1,5 @@
 import React, { Component, useEffect } from 'react';
-import PropTypes from 'prop-types';
+import PropTypes, { shape } from 'prop-types';
 import { I18nextProvider, Translation } from 'react-i18next';
 import { normalize, denormalize, schema } from 'normalizr';
 import { Button, ButtonGroup } from 'reactstrap';
@@ -26,6 +26,7 @@ import { SyncLoader as Loader } from "react-spinners";
 import { shapeTypeList as shapeList, getShapeTypeKey } from "../../models/shape";
 import { Polygon } from '../../models/polygon';
 import { Vertex } from '../../models/vertex';
+import IncidentList from '../IncidentList/IncidentList';
 
 const API = "https://dev.prosports.zone/api/v1/videos/73xK6JaeqV9MrGR2BlVO/annotations";
 
@@ -193,6 +194,7 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleVideoProgress = (state) => {
+		console.log("playing video");
 		const { played } = state;
 		this.setState((prevState) => {
 			if (prevState.isSeeking) return null;
@@ -230,21 +232,22 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleVideoSliderChange = (e) => {
+		console.log("changing slider in video");
 		const played = getFixedNumber(e.target.value, 5);
 		this.setState((prevState) => {
 			const { entities } = prevState;
 			let { focusing } = prevState;
 			if (focusing) {
 				const { shapeType } = entities.annotations[focusing];
-				if(shapeType == "polygon") {
-					const { vertices } = entities.annotations[focusing];
-					// for (let i = 0; i < vertices.length; i += 1) {
-					// 	if (played >= incidents[i].time) {
-					// 		if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
-					// 		if (incidents[i].status !== SHOW) focusing = '';
-					// 		break;
-					// 	} else if (i === incidents.length - 1) focusing = '';
-					// }
+				if(shapeType == "polygon" || shapeType == "chain") {
+					const { incidents } = entities.annotations[focusing];
+					for (let i = 0; i < incidents.length; i += 1) {
+						if (played >= incidents[i].time) {
+							if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
+							if (incidents[i].status !== SHOW) focusing = '';
+							break;
+						} else if (i === incidents.length - 1) focusing = '';
+					}
 				} else {
 					const { incidents } = entities.annotations[focusing];
 					for (let i = 0; i < incidents.length; i += 1) {
@@ -312,10 +315,10 @@ class TwoDimensionalVideo extends Component {
 
 		if( shape == "polygon" || shape == "chain" ) {
 			let { x, y } = stage.getPointerPosition();
-			let vertices;
+			let incidents;
 			this.setState((prevState) => {
 				const {
-					isAdding, focusing, annotations, entities
+					isAdding, focusing, annotations, entities, played
 				} = prevState;
 				if (!isAdding) return {};
 				// prevent x, y exceeding boundary
@@ -323,13 +326,16 @@ class TwoDimensionalVideo extends Component {
 				y = y < 0 ? 0 : y; y = y > stage.height() ? stage.height() : y;
 				this.UndoRedoState.save(prevState);
 				// first time adding
-				if (!focusing || !entities.annotations[focusing].vertices) {
-					vertices = [];
-					vertices.push(Vertex({
-						id: `${uniqueKey}`, name: `${uniqueKey}`, x, y,
+				if (!focusing || !entities.annotations[focusing].incidents || entities.annotations[focusing].isClosed || ( entities.annotations[focusing].shapeType != "polygon" && entities.annotations[focusing].shapeType != "chain" ) ) {
+					incidents = [];
+					incidents.push(Incident({
+						time: prevState.played, vertices: [], x: position.x, y: position.y,
 					}));
+					incidents[0].vertices.push(Vertex({
+						id: `${uniqueKey}`, name: `${uniqueKey}`, x, y
+					}))
 					entities.annotations[`${uniqueKey}`] = Polygon({
-						id: `${uniqueKey}`, name: `${uniqueKey}`, color, vertices, shapeType: shape
+						id: `${uniqueKey}`, name: `${uniqueKey}`, label: `${getLastAnnotationLabel(annotations, entities) + 1}`, color, incidents, shapeType: shape, labelText: `${getLastAnnotationLabel(annotations, entities) + 1} Layout`
 					});
 					return {
 						focusing: `${uniqueKey}`,
@@ -338,7 +344,7 @@ class TwoDimensionalVideo extends Component {
 					};
 				}
 				// continuing adding
-				entities.annotations[focusing].vertices.push(Vertex({
+				entities.annotations[focusing].incidents[0].vertices.push(Vertex({
 					id: `${uniqueKey}`, name: `${uniqueKey}`, x, y
 				}));
 				return { entities: { ...entities, annotations: entities.annotations } };
@@ -395,25 +401,74 @@ class TwoDimensionalVideo extends Component {
 			this.setState((prevState) => {
 				this.UndoRedoState.save(prevState);
 				const { entities, played } = prevState;
-				const { incidents } = entities.annotations[group.name()];
-				for (let i = 0; i < incidents.length; i += 1) {
-					if (played >= incidents[i].time) {
-						// skip elapsed incidents
-						if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
-						if (played === incidents[i].time) {
-							incidents[i].x = position.x; incidents[i].y = position.y; incidents[i].width = obj.width(); incidents[i].height = obj.height();
-							break;
-						}
-						if (i === incidents.length - 1) {
-							incidents.push(Incident({
-								id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, width: obj.width(), height: obj.height(), time: played,
+				const { incidents, shapeType } = entities.annotations[group.name()];
+				if ( shapeType == "chain" || shapeType == "polygon" ) {
+					for (let i = 0; i < incidents.length; i += 1) {
+						if (played >= incidents[i].time) {
+							// skip elapsed incidents
+							if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
+							if (played === incidents[i].time) {
+								// console.log("232323", diffX, position.x, incidents[0].x)
+								var diffX = parseFloat(position.x) - parseFloat(incidents[i].x),
+								diffY = parseFloat(position.y) - parseFloat(incidents[i].y);
+
+								console.log("i =>", i);
+								console.log("moved x =>", diffX);
+								console.log("moved Y", diffY)
+								incidents[i].x = position.x;
+								incidents[i].y = position.y;
+								incidents[i].vertices = incidents[i].vertices.map(vt => {
+									console.log("vt =>", parseFloat(diffX));
+									return {
+										...vt,
+										// x: parseFloat(vt.x) + parseFloat(diffX),
+										// y: parseFloat(vt.y) + position.y
+									};
+								})
+								break;
+							}
+							if (i === incidents.length - 1) {
+								console.log("333", parseFloat(position.x) - parseFloat(incidents[0].x));
+								var diffX = parseFloat(position.x) - parseFloat(incidents[0].x),
+									diffY = parseFloat(position.y) - parseFloat(incidents[0].y);
+								console.log("444", diffX);
+								incidents.push(Incident({
+									x: position.x, y: position.y, time: played, vertices: incidents[0].vertices.map(vt => {
+										return {
+											...vt,
+											x: parseFloat(vt.x) + diffX,
+											y: parseFloat(vt.y) + diffY
+										}
+									})
+								}));
+								break;
+							}
+							incidents.splice(i + 1, 0, Incident({
+								id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, time: played,
 							}));
 							break;
 						}
-						incidents.splice(i + 1, 0, Incident({
-							id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, height: obj.height(), width: obj.width(), time: played,
-						}));
-						break;
+					}
+				} else {
+					for (let i = 0; i < incidents.length; i += 1) {
+						if (played >= incidents[i].time) {
+							// skip elapsed incidents
+							if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
+							if (played === incidents[i].time) {
+								incidents[i].x = position.x; incidents[i].y = position.y; incidents[i].width = obj.width(); incidents[i].height = obj.height();
+								break;
+							}
+							if (i === incidents.length - 1) {
+								incidents.push(Incident({
+									id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, width: obj.width(), height: obj.height(), time: played,
+								}));
+								break;
+							}
+							incidents.splice(i + 1, 0, Incident({
+								id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, height: obj.height(), width: obj.width(), time: played,
+							}));
+							break;
+						}
 					}
 				}
 				return {};
@@ -545,49 +600,103 @@ class TwoDimensionalVideo extends Component {
 	handleListAnnotationShowHide = (e) => {
 		const { name } = e;
 		const { status } = e;
+		console.log(status);
 		const uniqueKey = new Date().getTime().toString(36);
 		this.setState((prevState) => {
 			this.UndoRedoState.save(prevState);
 			const { played, entities } = prevState;
-			const { incidents } = entities.annotations[name];
-			for (let i = 0; i < incidents.length; i += 1) {
-				if (i === 0 && played < incidents[i].time) {
-					incidents.splice(0, 0, Incident({
-						id: `${uniqueKey}`, name: `${uniqueKey}`, x: incidents[i].x, y: incidents[i].y, height: incidents[i].height, width: incidents[i].width, time: played, status,
-					}));
-					break;
-				}
-				if (played >= incidents[i].time) {
-					// skip elapsed incidents
-					if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
-					if (played === incidents[i].time) {
-						incidents.splice(i, 1, Incident({
-							...incidents[i], id: `${uniqueKey}`, name: `${uniqueKey}`, status,
+			const { incidents, shapeType } = entities.annotations[name];
+			if (shapeType === "chain" || shapeType === "polygon") {
+				for (let i = 0; i < incidents.length; i += 1) {
+					const { vertices } = incidents[i];
+					if (i === 0 && played < incidents[i].time) {
+						incidents.splice(0, 0, Incident({
+							x: incidents[i].x, y: incidents[i].y, time: played, status, vertices: incidents[i].vertices
 						}));
 						break;
 					}
-					if (i === incidents.length - 1) {
-						incidents.push(Incident({
+					if (played >= incidents[i].time) {
+						// skip elapsed incidents
+						if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
+						if (played === incidents[i].time) {
+							incidents.splice(i, 1, Incident({
+								...incidents[i], status,
+							}));
+							break;
+						}
+						if (i === incidents.length - 1) {
+							incidents.push(Incident({
+								x: incidents[i].x, y: incidents[i].y, time: played, status, vertices: incidents[i].vertices
+							}));
+							break;
+						}
+						// const interpoArea = getInterpolatedData({
+						// 	startIncident: incidents[i],
+						// 	endIncident: incidents[i + 1],
+						// 	currentTime: played,
+						// 	type: INTERPOLATION_TYPE.LENGTH,
+						// });
+						for (let vi = 0; vi < vertices.length; vi++) {
+							const { name } = vertices[vi];
+							const interpoPos = getInterpolatedData({
+								startIncident: incidents[i],
+								endIncident: incidents[i + 1],
+								currentTime: played,
+								type: INTERPOLATION_TYPE.POSITION,
+								shapeType,
+								vname: name
+							});
+							vertices[vi].x = interpoPos.x;
+							vertices[vi].y = interpoPos.y;
+						}
+						incidents.splice(i + 1, 0, Incident({
+							id: `${uniqueKey}`, name: `${uniqueKey}`,time: played, status, vertices: [
+								...vertices
+							]
+						}));
+						break;
+					}
+				}
+			} else {
+				for (let i = 0; i < incidents.length; i += 1) {
+					if (i === 0 && played < incidents[i].time) {
+						incidents.splice(0, 0, Incident({
 							id: `${uniqueKey}`, name: `${uniqueKey}`, x: incidents[i].x, y: incidents[i].y, height: incidents[i].height, width: incidents[i].width, time: played, status,
 						}));
 						break;
 					}
-					const interpoArea = getInterpolatedData({
-						startIncident: incidents[i],
-						endIncident: incidents[i + 1],
-						currentTime: played,
-						type: INTERPOLATION_TYPE.LENGTH,
-					});
-					const interpoPos = getInterpolatedData({
-						startIncident: incidents[i],
-						endIncident: incidents[i + 1],
-						currentTime: played,
-						type: INTERPOLATION_TYPE.POSITION,
-					});
-					incidents.splice(i + 1, 0, Incident({
-						id: `${uniqueKey}`, name: `${uniqueKey}`, x: interpoPos.x, y: interpoPos.y, height: interpoArea.height, width: interpoArea.width, time: played, status,
-					}));
-					break;
+					if (played >= incidents[i].time) {
+						// skip elapsed incidents
+						if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
+						if (played === incidents[i].time) {
+							incidents.splice(i, 1, Incident({
+								...incidents[i], id: `${uniqueKey}`, name: `${uniqueKey}`, status,
+							}));
+							break;
+						}
+						if (i === incidents.length - 1) {
+							incidents.push(Incident({
+								id: `${uniqueKey}`, name: `${uniqueKey}`, x: incidents[i].x, y: incidents[i].y, height: incidents[i].height, width: incidents[i].width, time: played, status,
+							}));
+							break;
+						}
+						const interpoArea = getInterpolatedData({
+							startIncident: incidents[i],
+							endIncident: incidents[i + 1],
+							currentTime: played,
+							type: INTERPOLATION_TYPE.LENGTH,
+						});
+						const interpoPos = getInterpolatedData({
+							startIncident: incidents[i],
+							endIncident: incidents[i + 1],
+							currentTime: played,
+							type: INTERPOLATION_TYPE.POSITION,
+						});
+						incidents.splice(i + 1, 0, Incident({
+							id: `${uniqueKey}`, name: `${uniqueKey}`, x: interpoPos.x, y: interpoPos.y, height: interpoArea.height, width: interpoArea.width, time: played, status,
+						}));
+						break;
+					}
 				}
 			}
 
@@ -722,32 +831,43 @@ class TwoDimensionalVideo extends Component {
 		return true;
 	}
 
-	handleSubmit = () => {
-		const { annotations, isSubmitted } = this.state;
-		const { onSubmit, hasReview, emptyCheckSubmissionWarningText } = this.props;
-
-		if (this.isEmptyAnnotationOrIncident()) {
-			this.setState({ isDialogOpen: true, dialogTitle: 'Submission warning', dialogMessage: emptyCheckSubmissionWarningText });
-			return;
-		}
-		if (!isSubmitted && hasReview) {
-			this.setState({
-				isLoop: true, isSubmitted: true, played: 0, isPlaying: true, focusing: '',
-			});
-			return;
-		}
-		const { videoWidth, annotationHeight, entities } = this.state;
-		const { url } = this.props;
-		const annotation = new schema.Entity('annotations');
-		const denormalizedAnnotations = denormalize({ annotations }, { annotations: [annotation] }, entities).annotations;
-		denormalizedAnnotations.forEach((ann) => {
-			delete ann.isManipulatable;
-		});
-		const data = {
-			url, videoWidth, annotationHeight, annotations: denormalizedAnnotations,
-		};
-		onSubmit(data);
+	handleCloseDraw = (e) => {
+		this.setState(prevState => {
+			const { focusing, annotations, entities } = prevState;
+			entities.annotations[focusing].isClosed = true;
+			return {
+				isAdding: false,
+				entities: { ...entities, annotations: entities.annotations }
+			}
+		})
 	}
+
+	// handleSubmit = () => {
+	// 	const { annotations, isSubmitted } = this.state;
+	// 	const { onSubmit, hasReview, emptyCheckSubmissionWarningText } = this.props;
+
+	// 	if (this.isEmptyAnnotationOrIncident()) {
+	// 		this.setState({ isDialogOpen: true, dialogTitle: 'Submission warning', dialogMessage: emptyCheckSubmissionWarningText });
+	// 		return;
+	// 	}
+	// 	if (!isSubmitted && hasReview) {
+	// 		this.setState({
+	// 			isLoop: true, isSubmitted: true, played: 0, isPlaying: true, focusing: '',
+	// 		});
+	// 		return;
+	// 	}
+	// 	const { videoWidth, annotationHeight, entities } = this.state;
+	// 	const { url } = this.props;
+	// 	const annotation = new schema.Entity('annotations');
+	// 	const denormalizedAnnotations = denormalize({ annotations }, { annotations: [annotation] }, entities).annotations;
+	// 	denormalizedAnnotations.forEach((ann) => {
+	// 		delete ann.isManipulatable;
+	// 	});
+	// 	const data = {
+	// 		url, videoWidth, annotationHeight, annotations: denormalizedAnnotations,
+	// 	};
+	// 	onSubmit(data);
+	// }
 
     handleDialogToggle = () => this.setState(prevState => ({ isDialogOpen: !prevState.isDialogOpen }));
 
@@ -764,19 +884,27 @@ class TwoDimensionalVideo extends Component {
 		const isAddButtonAvailable = (defaultNumRootAnnotations + numAnnotationsCanBeAdded) > getLastAnnotationLabel(annotations, entities);
 		if (isAdding || (!isAdding && isAddButtonAvailable)) {
 			return (
-				<Button
-					disabled={ isAdding }
-					color='primary'
-					onClick={ this.handleAddClick }
-					className='w-100 d-flex justify-content-center align-items-center float-left'
-				>
-					<MdAdd />
-					<Translation ns='twoDimensionalVideo'>
-						{
-							t => (isAdding ? t('addingBox') : t('addBox'))
-						}
-					</Translation>
-				</Button>
+				<div>
+					<Button
+						disabled={ isAdding }
+						color='primary'
+						onClick={ this.handleAddClick }
+						className='w-100 d-flex justify-content-center align-items-center float-left'
+					>
+						<MdAdd />
+						{isAdding ? 'Adding' : 'Add'}
+					</Button>
+					{
+						(isAdding && this.state.shape == "chain") && <Button
+							color='secondary'
+							onClick={e => this.handleCloseDraw(e)}
+							className='w-100 d-flex justify-content-center align-items-center float-left mt-2'
+						>
+							Done
+						</Button>
+					}
+				</div>
+				
 			);
 		}
 		return null;
@@ -859,12 +987,12 @@ class TwoDimensionalVideo extends Component {
 	/* ==================== polygon ==================== */
 	handleCanvasVertexMouseDown = (e) => {
 		const activeVertex = e.target;
-		const group = activeVertex.getParent();
+		const group = activeVertex.getParent();		
 		this.setState((prevState) => {
 			const { isAdding, focusing, entities } = prevState;
 			if (isAdding) {
 				const { annotations } = entities;
-				if (group.name() === focusing && annotations[focusing].vertices[0].name === activeVertex.name()) {
+				if (group.name() === focusing && annotations[focusing].incidents[0].vertices[0].name === activeVertex.name()) {
 					annotations[focusing].isClosed = true;
 					return { isAdding: false, entities: { ...entities, annotations } };
 				}
@@ -889,20 +1017,44 @@ class TwoDimensionalVideo extends Component {
 		const stage = e.target.getStage();
 		const position = stage.getPointerPosition();
 		this.setState((prevState) => {
-			const {
-				isAdding, entities
-			} = prevState;
-			if (isAdding) return {};
+			const { isAdding, entities, played } = prevState;
+			if (isAdding) return {};			
 			const { annotations } = entities;
-			const vertices = annotations[group.name()].vertices.map((v) => {
-				if (v.name !== activeVertex.name()) return v;
-				// prevent x, y exceeding boundary
-				let x = activeVertex.x(); let y = activeVertex.y();
-				x = x < 0 ? 0 : x; x = x > stage.width() ? stage.width() : x;
-				y = y < 0 ? 0 : y; y = y > stage.height() ? stage.height() : y;
-				return { ...v, x, y };
-			});
-			annotations[group.name()].vertices = vertices;
+			const { incidents } = annotations[group.name()];
+			console.log(incidents);
+			for ( let i = 0; i < incidents.length; i ++ ) {
+				if ( played >= incidents[i].time ) {
+					// skip elapsed incidents
+					if ( i !== incidents.length - 1 && played >= incidents[i + 1].time ) continue;
+					if ( played === incidents[i].time ) {
+						incidents[i].x = position.x;
+						incidents[i].y = position.y;
+						incidents[i].vertices = incidents[i].vertices.map((v) => {
+							if (v.name !== activeVertex.name()) return v;
+							// prevent x, y exceeding boundary
+							let x = activeVertex.x(); let y = activeVertex.y();
+							x = x < 0 ? 0 : x; x = x > stage.width() ? stage.width() : x;
+							y = y < 0 ? 0 : y; y = y > stage.height() ? stage.height() : y;
+							return { ...v, x, y };
+						});
+						break;
+					}
+					// var diffX = parseFloat(position.x) - parseFloat(incidents[i].x),
+					// 	diffY = parseFloat(position.y) - parseFloat(incidents[i].y);
+					incidents.splice(i + 1, 0, Incident({
+						x: position.x, y: position.y, time: played, vertices: incidents[i].vertices.map((v) => {
+							if (v.name !== activeVertex.name()) return v;
+							// prevent x, y exceeding boundary
+							let x = activeVertex.x(); let y = activeVertex.y();
+							x = x < 0 ? 0 : x; x = x > stage.width() ? stage.width() : x;
+							y = y < 0 ? 0 : y; y = y > stage.height() ? stage.height() : y;
+							return { ...v, x, y };
+						})
+					}));
+					break;
+				}
+			}			
+			annotations[group.name()].incidents = incidents;
 			return { entities: { ...entities, annotations } };
 		});
 	}
@@ -919,6 +1071,70 @@ class TwoDimensionalVideo extends Component {
 				}
 			}
 		})
+	}
+
+	handleCanvasGroupMove = (e) => {
+		if (e.target.getClassName() !== 'Group') return;
+		const group = e.target;
+		const { entities, focusing } = this.state;
+		if (focusing) {
+			const { shapeType } = entities.annotations[focusing];
+			const shapeKey = getShapeTypeKey(shapeType);
+			let obj = group.get(shapeKey)[0];
+			const position = group.position();
+			const uniqueKey = getUniqueKey();
+			this.setState((prevState) => {
+				this.UndoRedoState.save(prevState);
+				const { entities, played } = prevState;
+				const { incidents, shapeType } = entities.annotations[group.name()];
+				for (let i = 0; i < incidents.length; i += 1) {
+					if (played >= incidents[i].time) {
+						// skip elapsed incidents
+						if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
+						if (played === incidents[i].time) {
+							// console.log("232323", diffX, position.x, incidents[0].x)
+							var diffX = parseFloat(position.x) - parseFloat(incidents[i].x),
+							diffY = parseFloat(position.y) - parseFloat(incidents[i].y);
+
+							console.log("i =>", i);
+							console.log("moved x =>", diffX);
+							console.log("moved Y", diffY)
+							incidents[i].x = position.x;
+							incidents[i].y = position.y;
+							incidents[i].vertices = incidents[i].vertices.map(vt => {
+								console.log("vt =>", parseFloat(diffX));
+								return {
+									...vt,
+									// x: parseFloat(vt.x) + parseFloat(diffX),
+									// y: parseFloat(vt.y) + position.y
+								};
+							})
+							break;
+						}
+						if (i === incidents.length - 1) {
+							console.log("333", parseFloat(position.x) - parseFloat(incidents[0].x));
+							var diffX = parseFloat(position.x) - parseFloat(incidents[0].x),
+								diffY = parseFloat(position.y) - parseFloat(incidents[0].y);
+							incidents.push(Incident({
+								x: position.x, y: position.y, time: played, vertices: incidents[0].vertices.map(vt => {
+									return {
+										...vt,
+										x: parseFloat(vt.x) + diffX,
+										y: parseFloat(vt.y) + diffY
+									}
+								})
+							}));
+							break;
+						}
+						incidents.splice(i + 1, 0, Incident({
+							id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, time: played,
+						}));
+						break;
+					}
+				}
+				return {};
+			});
+		}
 	}
 	
 
@@ -1000,6 +1216,7 @@ class TwoDimensionalVideo extends Component {
 			onCanvasLineMouseDown: this.handleCanvasFocusing,
 			onCanvasVertexDragEnd: this.handleCanvasVertexDragEnd,
 			onAnnotationChangeLabel: this.handleAnnotationChangeLabel,
+			onCanvasGroupMove: this.handleCanvasGroupMove
 		};
 
 		let controlPanelUI = null;

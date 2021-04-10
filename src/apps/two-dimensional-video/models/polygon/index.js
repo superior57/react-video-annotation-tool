@@ -1,22 +1,41 @@
 import { withBasicIdentities } from 'shared/models/node/index';
+const canClearRedundantIncidents = state => ({
+	clearRedundantIncidents: (status) => {
+		const { incidents } = state;
+		for (let i = incidents.length - 1; i > 0; i -= 1) {
+			if (incidents[i].status === status && incidents[i].status === incidents[i - 1].status) {
+				incidents.splice(i, 1);
+			}
+		}
+	},
+});
 
 const Polygon = ({
 	id,
 	name,
+	label,
 	color,
+	isManipulatable = true,
 	isClosed = false,
-	vertices = [],
 	selectedOptions = [],
-	shapeType = ''
+	shapeType = '',
+	labelText = '',
+	childrenNames = [],
+	parentName = '',
+	incidents = [],
 }) => {
 	const state = {
 		color,
 		isClosed,
-		vertices,
 		selectedOptions,
-		shapeType
+		shapeType,
+		isManipulatable,
+		labelText,
+		childrenNames,
+		parentName,
+		incidents,
 	};
-	return Object.assign(state, withBasicIdentities({ id, name }));
+	return Object.assign(state, withBasicIdentities({ id, name, label }), canClearRedundantIncidents(state));
 };
 
 export {

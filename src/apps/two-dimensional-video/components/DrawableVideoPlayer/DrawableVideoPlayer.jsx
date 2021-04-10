@@ -45,7 +45,8 @@ const DrawableVideoPlayer = ({
 		onVideoPrevSecFrame,
 		onCanvasVertexMouseDown,
 		onCanvasLineMouseDown,
-		onCanvasVertexDragEnd
+		onCanvasVertexDragEnd,
+		onCanvasGroupMove
 	} = twoDimensionalVideoContext;
 
 	const rootClassName = `drawable-video-player${className ? ` ${className}` : ''}`;
@@ -81,6 +82,7 @@ const DrawableVideoPlayer = ({
 					onVertexMouseDown={onCanvasVertexMouseDown}
 					onLineMouseDown={onCanvasLineMouseDown}
 					onVertexDragEnd={onCanvasVertexDragEnd}
+					onGroupMove={onCanvasGroupMove}
 				/>
 			</div>
 			<VideoPlayerControl

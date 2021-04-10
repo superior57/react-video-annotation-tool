@@ -7,13 +7,14 @@ const SPLIT = 'Split';
 const Incident = ({
 	id,
 	name,
-	label,
 	x = 0,
 	y = 0,
+	label,
 	width = 0,
 	height = 0,
 	time = '',
 	status = SHOW,
+	vertices = []
 }) => {
 	const state = {
 		x,
@@ -22,6 +23,7 @@ const Incident = ({
 		height,
 		time,
 		status,
+		vertices
 	};
 	return Object.assign(state, withBasicIdentities({ id, name, label }));
 };
