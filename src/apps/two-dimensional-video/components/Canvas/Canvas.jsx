@@ -100,11 +100,10 @@ const Canvas = ({
 }) => {
 	const { t } = useTranslation('twoDimensionalVideo');
 	const layerItems = [];
+	
 	annotations.slice().reverse().forEach((annotationId) => {
-		// console.log(entities.annotations[annotationId])
 		const { color, id, name, shapeType, isManipulatable } = entities.annotations[annotationId];
 		const isCurrent = focusing == id;
-		// console.log("isManipulatable => ", isManipulatable, entities.annotations[annotationId]);
 
 		if( shapeType == "polygon" ) {
 			const { isClosed, incidents } = entities.annotations[annotationId];
@@ -238,18 +237,26 @@ const Canvas = ({
 			}			
 		} else if ( shapeType == "chain" ) {
 			const { isClosed, incidents } = entities.annotations[annotationId];
-			const colorWithOpacity = color.replace(/,1\)/, ',.15)');
-			const verticesUI = [];
-			const linePoints = [];
-			const startPoint = {};
+			const colorWithOpacity = color.replace(/, [0-9].[0-9][0-9]\)/, ', 1)')
+											.replace(/, [0-9][0-9]\)/, ', 1)')
+											.replace(/, [0-9]\)/, ', 1)')
+											.replace(/, .[0-9]\)/, ', 1)')
+											.replace(/, .[0-9][0-9]\)/, ', 1)');		
+											const verticesUI = [];
+											const linePoints = [];
+											const startPoint = {};
+
 			for ( let i = 0; i < incidents.length; i ++ ) {
-				let x, y;
+				let x, y, absMinX = 0, absMinY = 0, absMaxX = 0, absMaxY = 0;
 				if (played >= incidents[i].time) {
 					if (i !== incidents.length - 1 && played >= incidents[i + 1].time) {
 						continue;
 					}
+					
 					if (incidents[i].status !== SHOW) break; // todo					
-
+					
+					console.log("time =>", played);
+					console.log("chain inci =>", incidents[i]);					
 					incidents[i].vertices.forEach((v, vi) => {
 						const { name } = v;
 						if (i === incidents.length - 1) {
@@ -273,12 +280,21 @@ const Canvas = ({
 
 						if (vi === 0) {
 							startPoint.x = v.x; startPoint.y = v.y;
-						}
+							absMinX = v.x;
+							absMinY = v.y;
+							absMaxX = v.x;
+							absMaxY = v.y;
+						}		
+						absMinX = absMinX > v.x ? v.x : absMinX;
+						absMinY = absMinY > v.y ? v.y : absMinY;
+						absMaxX = absMaxX < v.x ? v.x : absMaxX;
+						absMaxY = absMaxY < v.y ? v.y : absMaxY;		
+
 						if (isAdding && focusing === name && vi === 0) {
 							verticesUI.push(
 								<Circle
-									x={ x }
-									y={ y }
+									x={ v.x }
+									y={ v.y }
 									key={ v.name }
 									name={ v.name }
 									radius={ CONST.DOT_LENGTH * 3 }
@@ -336,7 +352,42 @@ const Canvas = ({
 							onFocus={ () => {} }
 							onBlur={ () => {} }
 						/>
-					);
+					);	
+					
+					// const fill = color.replace(/, [0-9].[0-9][0-9]\)/, ', 1)')
+					// 					.replace(/, [0-9][0-9]\)/, ', 1)')
+					// 					.replace(/, [0-9]\)/, ', 1)');
+					// let resizingAnchorsUI = null;
+					// const resizingAnchorsData = [
+					// 	{ x: absMinX, y: absMinY, key: 'topLeft', name: 'topLeft' },
+					// 	{ x: absMaxX, y: absMinY, key: 'topRight', name: 'topRight' },
+					// 	{ x: absMaxX, y: absMaxY, key: 'bottomRight', name: 'bottomRight' },
+					// 	{ x: absMinX, y: absMaxY, key: 'bottomLeft', name: 'bottomLeft' },
+					// 	{ x: (absMaxX - absMinX) / 2, y: absMinY, key: 'top', name: 'top' },
+					// 	{ x: absMinX, y: (absMaxY - absMinY) / 2, key: 'left', name: 'left' },
+					// 	{ x: absMaxX, y: (absMaxY - absMinY) / 2, key: 'right', name: 'right' },
+					// 	{ x: (absMaxX - absMinX) / 2, y: absMaxY, key: 'bottom', name: 'bottom' },
+					// ];
+					// if (isManipulatable && isCurrent ) {
+					// 	resizingAnchorsUI = resizingAnchorsData.map(data => (
+					// 		<ResizingAnchor
+					// 			dotLength={ dotLength }
+					// 			color={ fill }
+					// 			isManipulatable={ isManipulatable }
+					// 			x={ data.x }
+					// 			y={ data.y }
+					// 			key={ data.key }
+					// 			name={ data.name }
+					// 			canvasWidth={ canvasWidth }
+					// 			canvasHeight={ canvasHeight }
+					// 			onDragEnd={ onDotDragEnd }
+					// 			onMouseDown={ onDotMouseDown }
+					// 			shape={{
+					// 				type: shapeType
+					// 			}}
+					// 		/>
+					// 	));
+					// }
 		
 					layerItems.push(
 						<Group
@@ -359,14 +410,13 @@ const Canvas = ({
 						>
 							{lineUI}
 							{verticesUI}
+							{/* {resizingAnchorsUI} */}
 						</Group>
 					);
 				}
 			}			
 		} else {
 			const { incidents, labelText } = entities.annotations[annotationId];
-			
-			console.log("incidents rec =>", incidents);
 			for (let i = 0; i < incidents.length; i++) {
 				let x;
 				let y;

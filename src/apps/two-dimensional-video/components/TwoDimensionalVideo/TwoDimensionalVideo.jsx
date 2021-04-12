@@ -145,15 +145,20 @@ class TwoDimensionalVideo extends Component {
 			shape: 'circle'
 		};
 		this.UndoRedoState = new UndoRedo();
-		this.change = this.change.bind(this.state.focusing);
+		this.change = this.change.bind(this.state);
 	}
-
+	
+	
 	change(ev) {
 		console.log(this.state);
 	}
-
+	
 	componentDidMount() {
 		this.initialState();
+	}
+
+	componentDidUpdate() {
+		console.log("component did update", this.state);
 	}
 
 	initialState = () => {
@@ -166,13 +171,30 @@ class TwoDimensionalVideo extends Component {
 			try {
 				const data = JSON.parse(res.data);	
 				if(data) {
-					this.setState((prevState) => {			
-						return {
-							...data,
-							initialAnnotations: data.annotations,
-							apicallStatus: "called"
+					this.setState((prevState) => {		
+						for (let i = 0; i < data.annotations.length; i++) {
+							let name = data.annotations[i];		
+							const { shapeType } = data.entities.annotations[name];
+							if (shapeType === "polygon" || shapeType === "chain") {
+								data.entities.annotations[name] = Polygon({
+									...data.entities.annotations[name]
+								})
+							} else {
+								data.entities.annotations[name] = Rectangle({
+									...data.entities.annotations[name]
+								})
+							}
+							
 						}
-					})
+						return {
+							initialAnnotations: data.annotations,
+							apicallStatus: "called",
+							annotations: data.annotations,
+							entities: {
+								annotations: data.entities.annotations
+							}					
+						}
+					});
 				}
 			} catch (error) {
 				this.setState((prevState) => {			
@@ -232,7 +254,6 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleVideoSliderChange = (e) => {
-		console.log("changing slider in video");
 		const played = getFixedNumber(e.target.value, 5);
 		this.setState((prevState) => {
 			const { entities } = prevState;
@@ -630,12 +651,6 @@ class TwoDimensionalVideo extends Component {
 							}));
 							break;
 						}
-						// const interpoArea = getInterpolatedData({
-						// 	startIncident: incidents[i],
-						// 	endIncident: incidents[i + 1],
-						// 	currentTime: played,
-						// 	type: INTERPOLATION_TYPE.LENGTH,
-						// });
 						for (let vi = 0; vi < vertices.length; vi++) {
 							const { name } = vertices[vi];
 							const interpoPos = getInterpolatedData({
@@ -986,6 +1001,7 @@ class TwoDimensionalVideo extends Component {
 
 	/* ==================== polygon ==================== */
 	handleCanvasVertexMouseDown = (e) => {
+		console.log("vertiex circle mouse down");
 		const activeVertex = e.target;
 		const group = activeVertex.getParent();		
 		this.setState((prevState) => {
