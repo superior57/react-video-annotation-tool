@@ -23,6 +23,8 @@ const Polygon = ({
 	childrenNames = [],
 	parentName = '',
 	incidents = [],
+	arrowHead = false,
+	lineMode = "0"
 }) => {
 	const state = {
 		color,
@@ -34,6 +36,8 @@ const Polygon = ({
 		childrenNames,
 		parentName,
 		incidents,
+		arrowHead,
+		lineMode
 	};
 	return Object.assign(state, withBasicIdentities({ id, name, label }), canClearRedundantIncidents(state));
 };

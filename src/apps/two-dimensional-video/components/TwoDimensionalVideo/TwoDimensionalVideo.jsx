@@ -2,7 +2,7 @@ import React, { Component, useEffect } from 'react';
 import PropTypes, { shape } from 'prop-types';
 import { I18nextProvider, Translation } from 'react-i18next';
 import { normalize, denormalize, schema } from 'normalizr';
-import { Button, ButtonGroup } from 'reactstrap';
+import { Button, ButtonGroup, FormGroup, Input, Label } from 'reactstrap';
 import { MdRedo, MdUndo, MdAdd } from 'react-icons/md';
 import 'bootstrap/dist/css/bootstrap.css';
 import PopupDialog from 'shared/components/PopupDialog/PopupDialog.jsx';
@@ -158,7 +158,7 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	componentDidUpdate() {
-		console.log("component did update", this.state);
+		// console.log("component did update", this.state);
 	}
 
 	initialState = () => {
@@ -175,7 +175,7 @@ class TwoDimensionalVideo extends Component {
 						for (let i = 0; i < data.annotations.length; i++) {
 							let name = data.annotations[i];		
 							const { shapeType } = data.entities.annotations[name];
-							if (shapeType === "polygon" || shapeType === "chain") {
+							if (shapeType === "polygon" || shapeType === "chain" || shapeType === "line") {
 								data.entities.annotations[name] = Polygon({
 									...data.entities.annotations[name]
 								})
@@ -197,7 +197,7 @@ class TwoDimensionalVideo extends Component {
 					});
 				}
 			} catch (error) {
-				this.setState((prevState) => {			
+				this.setState((prevState) => {
 					return {
 						apicallStatus: "called"
 					}
@@ -260,7 +260,7 @@ class TwoDimensionalVideo extends Component {
 			let { focusing } = prevState;
 			if (focusing) {
 				const { shapeType } = entities.annotations[focusing];
-				if(shapeType == "polygon" || shapeType == "chain") {
+				if(shapeType === "polygon" || shapeType === "chain" || shapeType === "line") {
 					const { incidents } = entities.annotations[focusing];
 					for (let i = 0; i < incidents.length; i += 1) {
 						if (played >= incidents[i].time) {
@@ -334,7 +334,7 @@ class TwoDimensionalVideo extends Component {
 		const uniqueKey = getUniqueKey();
 		const color = "rgba(250, 8, 12, .37)"
 
-		if( shape == "polygon" || shape == "chain" ) {
+		if( shape === "polygon" || shape === "chain" || shape === "line" ) {
 			let { x, y } = stage.getPointerPosition();
 			let incidents;
 			this.setState((prevState) => {
@@ -347,7 +347,7 @@ class TwoDimensionalVideo extends Component {
 				y = y < 0 ? 0 : y; y = y > stage.height() ? stage.height() : y;
 				this.UndoRedoState.save(prevState);
 				// first time adding
-				if (!focusing || !entities.annotations[focusing].incidents || entities.annotations[focusing].isClosed || ( entities.annotations[focusing].shapeType != "polygon" && entities.annotations[focusing].shapeType != "chain" ) ) {
+				if (!focusing || !entities.annotations[focusing].incidents || entities.annotations[focusing].isClosed || ( entities.annotations[focusing].shapeType != "polygon" && entities.annotations[focusing].shapeType != "chain" && entities.annotations[focusing].shapeType != "line" ) ) {
 					incidents = [];
 					incidents.push(Incident({
 						time: prevState.played, vertices: [], x: position.x, y: position.y,
@@ -364,6 +364,8 @@ class TwoDimensionalVideo extends Component {
 						entities: { ...entities, annotations: entities.annotations },
 					};
 				}
+				// entities.annotations[focusing] = true;
+				prevState.isAdding = false;
 				// continuing adding
 				entities.annotations[focusing].incidents[0].vertices.push(Vertex({
 					id: `${uniqueKey}`, name: `${uniqueKey}`, x, y
@@ -423,7 +425,7 @@ class TwoDimensionalVideo extends Component {
 				this.UndoRedoState.save(prevState);
 				const { entities, played } = prevState;
 				const { incidents, shapeType } = entities.annotations[group.name()];
-				if ( shapeType == "chain" || shapeType == "polygon" ) {
+				if ( shapeType === "chain" || shapeType === "polygon" || shapeType === "line" ) {
 					for (let i = 0; i < incidents.length; i += 1) {
 						if (played >= incidents[i].time) {
 							// skip elapsed incidents
@@ -621,13 +623,12 @@ class TwoDimensionalVideo extends Component {
 	handleListAnnotationShowHide = (e) => {
 		const { name } = e;
 		const { status } = e;
-		console.log(status);
 		const uniqueKey = new Date().getTime().toString(36);
 		this.setState((prevState) => {
 			this.UndoRedoState.save(prevState);
 			const { played, entities } = prevState;
 			const { incidents, shapeType } = entities.annotations[name];
-			if (shapeType === "chain" || shapeType === "polygon") {
+			if (shapeType === "chain" || shapeType === "polygon" || shapeType === "line") {
 				for (let i = 0; i < incidents.length; i += 1) {
 					const { vertices } = incidents[i];
 					if (i === 0 && played < incidents[i].time) {
@@ -1032,12 +1033,13 @@ class TwoDimensionalVideo extends Component {
 		const group = activeVertex.getParent();
 		const stage = e.target.getStage();
 		const position = stage.getPointerPosition();
+
+
 		this.setState((prevState) => {
 			const { isAdding, entities, played } = prevState;
 			if (isAdding) return {};			
 			const { annotations } = entities;
 			const { incidents } = annotations[group.name()];
-			console.log(incidents);
 			for ( let i = 0; i < incidents.length; i ++ ) {
 				if ( played >= incidents[i].time ) {
 					// skip elapsed incidents
@@ -1111,10 +1113,6 @@ class TwoDimensionalVideo extends Component {
 							// console.log("232323", diffX, position.x, incidents[0].x)
 							var diffX = parseFloat(position.x) - parseFloat(incidents[i].x),
 							diffY = parseFloat(position.y) - parseFloat(incidents[i].y);
-
-							console.log("i =>", i);
-							console.log("moved x =>", diffX);
-							console.log("moved Y", diffY)
 							incidents[i].x = position.x;
 							incidents[i].y = position.y;
 							incidents[i].vertices = incidents[i].vertices.map(vt => {
@@ -1128,7 +1126,6 @@ class TwoDimensionalVideo extends Component {
 							break;
 						}
 						if (i === incidents.length - 1) {
-							console.log("333", parseFloat(position.x) - parseFloat(incidents[0].x));
 							var diffX = parseFloat(position.x) - parseFloat(incidents[0].x),
 								diffY = parseFloat(position.y) - parseFloat(incidents[0].y);
 							incidents.push(Incident({
@@ -1152,7 +1149,65 @@ class TwoDimensionalVideo extends Component {
 			});
 		}
 	}
-	
+
+
+	/** Line  */
+	handleLineArrow(e) {
+		this.setState(prevState => {
+			const { focusing, entities } = prevState;
+			const { annotations } = entities;
+			const current = annotations[focusing];
+			current.arrowHead = !current.arrowHead;
+			return {}
+		})
+	}
+
+	handleChangeLineMode(e) {
+		const value = e.target.value;
+		this.setState(prevState => {
+			const { focusing, entities } = prevState;
+			const { annotations } = entities;
+			const current = annotations[focusing];
+			current.lineMode = String(value);
+			return {}
+		})
+	}
+
+	LineProperties() {
+		const { focusing, entities } = this.state;
+		const LineModes = [
+			{
+				label: "Normal",
+				value: "0"
+			},
+			{
+				label: "Dashed 1",
+				value: "1"
+			},
+			{
+				label: "Dashed 2",
+				value: "2"
+			}
+		]
+		return (<div className="d-flex">
+			<Button 
+				className={`ml-2 mr-1`} 
+				outline={!entities.annotations[focusing].arrowHead}
+				color="dark"
+				onClick={e => this.handleLineArrow(e)}
+			>
+				ArrowHeader
+			</Button>
+			<FormGroup>
+				<Input type="select" onChange={e => this.handleChangeLineMode(e)} value={entities.annotations[focusing].lineMode}>
+					{
+						LineModes.map((mode, key) => <option value={mode.value} key={key}>{mode.label}</option>)
+					}
+				</Input>
+			</FormGroup>
+		</div>)
+	}
+
 
 	render() {
 		const {
@@ -1312,10 +1367,15 @@ class TwoDimensionalVideo extends Component {
 										onClick={(value) => {this.handleShape(value)} }
 									/>
 									{
-										this.state.focusing && <ColorPicker
-											onChange={ this.handleChangeColorPicker }
-											value={ this.state.focusing ? this.state.entities.annotations[this.state.focusing].color.replace(/,1\)/, ',.3)') : '' }					
-										/>
+										this.state.focusing && <div className="d-flex">
+											<ColorPicker
+												onChange={ this.handleChangeColorPicker }
+												value={ this.state.focusing ? this.state.entities.annotations[this.state.focusing].color.replace(/,1\)/, ',.3)') : '' }					
+											/>
+											{
+												this.state.shape === "line" && this.LineProperties()
+											}
+										</div>
 									}
 									
 								</div>

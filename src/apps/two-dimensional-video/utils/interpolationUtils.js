@@ -12,7 +12,7 @@ const getInterpolatedData = ({
 	// console.log("start vertice ", startIncident.vertices.find(v => v.name == vname));
 	// console.log("startIncident", startIncident)
 	// console.log("endIncident =>", endIncident);
-	if ( shapeType === "chain" || shapeType == "polygon" ) {
+	if ( shapeType === "chain" || shapeType === "polygon" || shapeType === "line" ) {
 		switch (type) {
 			case INTERPOLATION_TYPE.LENGTH:
 				interpolated.width = getLinearInterpolatedValue(endIncident.time, startIncident.time, endIncident.width, startIncident.width, currentTime);
