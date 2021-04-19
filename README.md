@@ -1,5 +1,5 @@
 # react-annotation-tool-package
-A react based video & image annotating tool.
+A react based video annotating tool.
 
 
 ## Quick Start
