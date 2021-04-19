@@ -4,7 +4,7 @@ import {
 	Stage, Layer, Rect, Group, Text, Circle, Arrow, Line
 } from 'react-konva';
 import { useTranslation } from 'react-i18next';
-import { SHOW } from '../../models/incident';
+import { Incident, SHOW } from '../../models/incident';
 import ResizingAnchor from './ResizingAnchor/ResizingAnchor.jsx';
 import { getInterpolatedData, INTERPOLATION_TYPE } from '../../utils/interpolationUtils';
 import './canvas.scss';
@@ -65,21 +65,62 @@ const handleVertexDragMove = (e, isAdding, entities, i) => {
 	const activeVertex = e.target;
 	const group = activeVertex.getParent();
 	const line = group.get('Line')[0];
-	const linePoints = [];
-	entities.annotations[group.name()].incidents[i].vertices.forEach((v) => {
-		if (v.name !== activeVertex.name()) {
-			linePoints.push(v.x); linePoints.push(v.y);
-			return;
-		}
-		linePoints.push(activeVertex.x()); linePoints.push(activeVertex.y());
-	});
-	let theata = angle(linePoints[0], linePoints[1], linePoints[2], linePoints[3]);
-	if (entities.annotations[group.name()].arrowHead) {
-		const arrowHead = group.get('Arrow')[0];
-		arrowHead.setRotation(theata);
-	}
+	const linePoints = [], shapePoints = [], controlPoints = [];
+	const { wave, shapeType } = entities.annotations[group.name()];
+	let theata = 0;
 
-	line.points(linePoints);
+	if (shapeType === "line") {
+		entities.annotations[group.name()].incidents[i].vertices.forEach((v) => {
+			if (v.name !== activeVertex.name()) {
+				linePoints.push(v.x); linePoints.push(v.y);
+				return;
+			}
+			linePoints.push(activeVertex.x()); linePoints.push(activeVertex.y());		
+		});
+	
+		// for wave
+		const leftWavePoints = [], rightWavePoints = [];
+		controlPoints.splice(0, 2, 
+			linePoints[2],
+			linePoints[3]
+		);
+		leftWavePoints.splice(0, 2, 
+			parseFloat(linePoints[0]) + ((parseFloat(controlPoints[0]) - parseFloat(linePoints[0])) / 2),
+			controlPoints[1]
+		);
+		rightWavePoints.splice(0, 2, 
+			parseFloat(controlPoints[0]) + ((parseFloat(linePoints[linePoints.length - 2]) - parseFloat(controlPoints[0])) / 2),
+			controlPoints[1]
+		);
+		theata = angle(linePoints[0], linePoints[1], linePoints[linePoints.length - 2], linePoints[linePoints.length - 1]);
+		if (wave) {			
+			shapePoints.splice(0, 2, linePoints[0], linePoints[1]);
+			shapePoints.splice(2, 2, leftWavePoints[0], leftWavePoints[1]);
+			shapePoints.splice(4, 2, rightWavePoints[0], rightWavePoints[1]);
+			shapePoints.splice(6, 2, linePoints[linePoints.length - 2], linePoints[linePoints.length - 1]);
+			theata = angle(rightWavePoints[0], rightWavePoints[1], linePoints[linePoints.length - 2], linePoints[linePoints.length - 1]);
+		} else {
+			shapePoints.splice(0, 2, linePoints[0], linePoints[1]);
+			shapePoints.splice(2, 2, linePoints[linePoints.length - 2], linePoints[linePoints.length - 1]);
+		}
+		if (entities.annotations[group.name()].arrowHead) {
+			const arrowHead = group.get('Arrow')[0];
+			arrowHead.setRotation(theata);
+		}
+	
+		line.points(shapePoints);
+	} else {
+		entities.annotations[group.name()].incidents[i].vertices.forEach((v) => {
+			if (v.name !== activeVertex.name()) {
+				linePoints.push(v.x); linePoints.push(v.y);
+				return;
+			}
+			linePoints.push(activeVertex.x()); linePoints.push(activeVertex.y());		
+		});
+	
+		line.points(linePoints);
+	}
+	
 };
 
 /** calculate two points angle */
@@ -432,10 +473,12 @@ const Canvas = ({
 				}
 			}			
 		} else if( shapeType == "line" ) {
-			const { isClosed, incidents, arrowHead, lineMode } = entities.annotations[annotationId];
+			const { isClosed, incidents, arrowHead, wave, lineMode } = entities.annotations[annotationId];
 			const colorWithOpacity = color.replace(/,1\)/, ',.15)');
 			const verticesUI = [];
 			const linePoints = [];
+			const controlPoints = [];
+			const shapePoints = [];
 			const startPoint = {};
 			let lineDash = [0];
 
@@ -477,9 +520,37 @@ const Canvas = ({
 
 						linePoints.push(x); linePoints.push(y);
 						let theata = 0;
-						if (linePoints.length === 4) {
-							theata = angle(linePoints[0], linePoints[1], linePoints[2], linePoints[3]);
+						if (linePoints.length >= 4) {
+							// linePoints = []
+							
+							const leftWavePoints = [], rightWavePoints = [];
+							controlPoints.splice(0, 2, 
+								linePoints[2],
+								linePoints[3]
+							);
+							leftWavePoints.splice(0, 2, 
+								parseFloat(linePoints[0]) + ((parseFloat(controlPoints[0]) - parseFloat(linePoints[0])) / 2),
+								controlPoints[1]
+							);
+							rightWavePoints.splice(0, 2, 
+								parseFloat(controlPoints[0]) + ((parseFloat(linePoints[linePoints.length - 2]) - parseFloat(controlPoints[0])) / 2),
+								controlPoints[1]
+							);
+							theata = angle(linePoints[0], linePoints[1], linePoints[linePoints.length - 2], linePoints[linePoints.length - 1]);
+							// theata = angle(shapePoints[shapePoints.length - 4], shapePoints[shapePoints.length - 3], shapePoints[shapePoints.length - 2], shapePoints[shapePoints.length - 1]);
+							if (wave) {
+								shapePoints.splice(0, 2, linePoints[0], linePoints[1]);
+								shapePoints.splice(2, 2, leftWavePoints[0], leftWavePoints[1]);
+								shapePoints.splice(4, 2, rightWavePoints[0], rightWavePoints[1]);
+								shapePoints.splice(6, 2, linePoints[linePoints.length - 2], linePoints[linePoints.length - 1]);
+								theata = angle(rightWavePoints[0], rightWavePoints[1], linePoints[linePoints.length - 2], linePoints[linePoints.length - 1]);
+							} else {
+								shapePoints.splice(0, 2, linePoints[0], linePoints[1]);
+								shapePoints.splice(2, 2, linePoints[linePoints.length - 2], linePoints[linePoints.length - 1]);								
+							}
 						}
+
+						
 
 						let arrowAngle = theata;
 						
@@ -503,7 +574,7 @@ const Canvas = ({
 									onBlur={ () => {} }
 								/>,
 							);
-						} else if (arrowHead && vi === 1) {
+						} else if (arrowHead && vi === 2) {
 							verticesUI.push(
 								<Arrow
 									offsetX={ CONST.DOT_LENGTH * -2.3 }
@@ -529,37 +600,65 @@ const Canvas = ({
 									onBlur={ () => {} }
 								/>,
 							);
-						} else if (isCurrent)  {
-							verticesUI.push(
-								<Rect
-									offsetX={ CONST.DOT_LENGTH / 1 }
-									offsetY={ CONST.DOT_LENGTH / 1 }
-									x={ x }
-									y={ y }
-									key={ v.name }
-									name={ v.name }
-									stroke={ color }
-									fill={ color }
-									strokeWidth={ 0 }
-									width={ CONST.DOT_LENGTH * 2 }
-									height={ CONST.DOT_LENGTH * 2 }
-									draggable
-									dragOnTop={ false }
-									onMouseDown={ onVertexMouseDown }
-									onMouseOver={ handleVertexMouseOver }
-									onMouseOut={ () => handleMouseOut(isAdding) }
-									onDragEnd={ onVertexDragEnd }
-									onDragMove={ e => handleVertexDragMove(e, isAdding, entities, i) }
-									onFocus={ () => {} }
-									onBlur={ () => {} }
-								/>,
-							);
+						} else if (isCurrent)  {							
+							if (wave && vi === 1) {
+								verticesUI.push(
+									<Circle
+										x={ x }
+										y={ y }
+										key={ v.name }
+										name={ v.name }
+										stroke={ color }
+										fill={ color }
+										strokeWidth={ 0 }
+										width={ CONST.DOT_LENGTH * 4 }
+										height={ CONST.DOT_LENGTH * 4 }
+										draggable
+										dragOnTop={ false }
+										onMouseDown={ onVertexMouseDown }
+										onMouseOver={ handleVertexMouseOver }
+										onMouseOut={ () => handleMouseOut(isAdding) }
+										onDragEnd={ onVertexDragEnd }
+										// onDragMove={ e => handleVertexDragMove(e, isAdding, entities, i) }
+										onFocus={ () => {} }
+										onBlur={ () => {} }
+									/>,
+								);
+							} else if (vi != 1) {
+								verticesUI.push(
+									<Rect
+										offsetX={ CONST.DOT_LENGTH / 1 }
+										offsetY={ CONST.DOT_LENGTH / 1 }
+										x={ x }
+										y={ y }
+										key={ v.name }
+										name={ v.name }
+										stroke={ color }
+										fill={ color }
+										strokeWidth={ 0 }
+										width={ CONST.DOT_LENGTH * 2 }
+										height={ CONST.DOT_LENGTH * 2 }
+										draggable
+										dragOnTop={ false }
+										onMouseDown={ onVertexMouseDown }
+										onMouseOver={ handleVertexMouseOver }
+										onMouseOut={ () => handleMouseOut(isAdding) }
+										onDragEnd={ onVertexDragEnd }
+										onDragMove={ e => handleVertexDragMove(e, isAdding, entities, i) }
+										onFocus={ () => {} }
+										onBlur={ () => {} }
+									/>,
+								);
+							}
 						}						
 					});
+
+					console.log("shapePoints", shapePoints);
+
 					const lineUI = (
 						<Line
 							name={ name }
-							points={ linePoints }
+							points={shapePoints}
 							closed={ false }
 							fill={ focusing === name ? colorWithOpacity : '' }
 							stroke={ color }
@@ -567,7 +666,7 @@ const Canvas = ({
 							lineCap='round'
 							lineJoin='round'
 							dash={lineDash}
-							// bezier={true}
+							bezier={wave}
 							onMouseDown={ onLineMouseDown }
 							onMouseOver={ () => handleMouseOver(isAdding) }
 							onMouseLeave={ () => handleMouseLeave(isAdding) }
@@ -575,11 +674,6 @@ const Canvas = ({
 							onFocus={ () => {} }
 							onBlur={ () => {} }
 						/>
-						// <Line
-						// 	stroke="black"
-						// 	points={[50, 50, 200, 50, 200, 200, 50, 100]}
-						// 	bezier
-						// />
 					);
 	
 					layerItems.push(		

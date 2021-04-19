@@ -367,6 +367,16 @@ class TwoDimensionalVideo extends Component {
 				// entities.annotations[focusing] = true;
 				prevState.isAdding = false;
 				// continuing adding
+				if (shape === "line") {
+					const startPoints = entities.annotations[focusing].incidents[0].vertices[0];
+					const controlPoints = [];
+					controlPoints.push( parseFloat(startPoints.x) + ((parseFloat(x) - parseFloat(startPoints.x)) / 2) );
+					controlPoints.push( parseFloat(startPoints.y) + ((parseFloat(y) - parseFloat(startPoints.y)) / 2) );
+
+					entities.annotations[focusing].incidents[0].vertices.push(Vertex({
+						id: `${uniqueKey}-control`, name: `${uniqueKey}-control`, x: controlPoints[0], y: controlPoints[1]
+					}));
+				}
 				entities.annotations[focusing].incidents[0].vertices.push(Vertex({
 					id: `${uniqueKey}`, name: `${uniqueKey}`, x, y
 				}));
@@ -1035,6 +1045,7 @@ class TwoDimensionalVideo extends Component {
 		const position = stage.getPointerPosition();
 
 
+
 		this.setState((prevState) => {
 			const { isAdding, entities, played } = prevState;
 			if (isAdding) return {};			
@@ -1162,6 +1173,17 @@ class TwoDimensionalVideo extends Component {
 		})
 	}
 
+	handleLineWave(e) {
+		this.setState(prevState => {
+			const { focusing, entities } = prevState;
+			const { annotations } = entities;
+			const current = annotations[focusing];
+			current.wave = !current.wave;
+			return {}
+		})
+	}
+
+
 	handleChangeLineMode(e) {
 		const value = e.target.value;
 		this.setState(prevState => {
@@ -1197,6 +1219,14 @@ class TwoDimensionalVideo extends Component {
 				onClick={e => this.handleLineArrow(e)}
 			>
 				ArrowHeader
+			</Button>
+			<Button 
+				className={`mr-1`} 
+				outline={!entities.annotations[focusing].wave}
+				color="dark"
+				onClick={e => this.handleLineWave(e)}
+			>
+				Wave
 			</Button>
 			<FormGroup>
 				<Input type="select" onChange={e => this.handleChangeLineMode(e)} value={entities.annotations[focusing].lineMode}>

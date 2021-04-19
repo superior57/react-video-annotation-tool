@@ -24,6 +24,7 @@ const Polygon = ({
 	parentName = '',
 	incidents = [],
 	arrowHead = false,
+	wave = false,
 	lineMode = "0"
 }) => {
 	const state = {
@@ -37,7 +38,8 @@ const Polygon = ({
 		parentName,
 		incidents,
 		arrowHead,
-		lineMode
+		lineMode,
+		wave
 	};
 	return Object.assign(state, withBasicIdentities({ id, name, label }), canClearRedundantIncidents(state));
 };
