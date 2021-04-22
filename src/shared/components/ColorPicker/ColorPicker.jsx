@@ -5,9 +5,12 @@ import reactCSS from 'reactcss'
 import { SketchPicker } from 'react-color'
 
 class ColorPicker extends React.Component {
-  state = {
-    displayColorPicker: false,
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      displayColorPicker: false,
+    };
+  }
 
   handleClick = () => {
     console.log("clicked");
