@@ -11,11 +11,9 @@ import './canvas.scss';
 import { getShapeTypeKey } from "../../models/shape";
 
 const handleGroupDragMove = (e, canvasWidth, canvasHeight, shapeType) => {
-	// console.log("dragging");
 	if (e.target.getClassName() !== 'Group') return;
 	const group = e.target;
 	const topLeft = group.get('.topLeft')[0];
-	// console.log("moving mouse", group)
 	const shapeKey = getShapeTypeKey(shapeType);
 	const obj = group.get(shapeKey)[0];
 	let absX; let absY;
@@ -311,9 +309,7 @@ const Canvas = ({
 					}
 					
 					if (incidents[i].status !== SHOW) break; // todo					
-					
-					// console.log("time =>", played);
-					// console.log("chain inci =>", incidents[i]);					
+				
 					incidents[i].vertices.forEach((v, vi) => {
 						const { name } = v;
 						if (i === incidents.length - 1) {
@@ -653,8 +649,6 @@ const Canvas = ({
 						}						
 					});
 
-					console.log("shapePoints", shapePoints);
-
 					const lineUI = (
 						<Line
 							name={ name }
@@ -760,7 +754,6 @@ const Canvas = ({
 							document.body.style.cursor = 'pointer';
 						},
 						onFocus: (ev) => {
-							console.log("clicked")
 						}
 					}
 					switch (shapeType) {
