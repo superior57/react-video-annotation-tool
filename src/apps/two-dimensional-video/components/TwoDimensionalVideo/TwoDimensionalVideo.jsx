@@ -5,50 +5,43 @@ import { normalize, denormalize, schema } from 'normalizr';
 import { Button, ButtonGroup, FormGroup, Input, Label } from 'reactstrap';
 import { MdRedo, MdUndo, MdAdd } from 'react-icons/md';
 import 'bootstrap/dist/css/bootstrap.css';
-import PopupDialog from 'shared/components/PopupDialog/PopupDialog.jsx';
-import { highContrastingColors as colors } from 'shared/utils/colorUtils';
-import { getRandomInt, getFixedNumber } from 'shared/utils/mathUtils';
-import { UndoRedo } from 'models/UndoRedo';
+import PopupDialog from '../../../../shared/components/PopupDialog/PopupDialog.jsx';
+import { highContrastingColors as colors } from '../../../../shared/utils/colorUtils';
+import { getRandomInt, getFixedNumber } from '../../../../shared/utils/mathUtils';
+import { UndoRedo } from '../../../../models/UndoRedo';
 import i18nextInstance from './i18n';
 import { Rectangle } from '../../models/rectangle';
 import { Incident, SPLIT, HIDE, SHOW } from '../../models/incident';
 import TwoDimensionalVideoContext from './twoDimensionalVideoContext';
 import { getInterpolatedData, INTERPOLATION_TYPE } from '../../utils/interpolationUtils';
-import Preview from '../Preview/Preview.jsx';
-import Review from '../Review/Review.jsx';
 import AnnotationList from '../AnnotationList/AnnotationList.jsx';
 import DrawableVideoPlayer from '../DrawableVideoPlayer/DrawableVideoPlayer.jsx';
 import { getLastAnnotationLabel, getUniqueKey } from '../../utils/utils';
 import './twoDimensionalVideo.scss';
-import ColorPicker, { getRgbColor } from "shared/components/ColorPicker/ColorPicker";
-import { InitialSate, sampleData } from "../../../../data/InitialState";
+import ColorPicker, { getRgbColor } from "../../../../shared/components/ColorPicker/ColorPicker";
 import { SyncLoader as Loader } from "react-spinners";
 import { shapeTypeList as shapeList, getShapeTypeKey } from "../../models/shape";
 import { Polygon } from '../../models/polygon';
 import { Vertex } from '../../models/vertex';
-import IncidentList from '../IncidentList/IncidentList';
 
-const API = "https://dev.prosports.zone/api/v1/videos/73xK6JaeqV9MrGR2BlVO/annotations";
 
-const getAnnotationData = (callback) => {
+
+const getAnnotationData = async (API) => {
 	const fetchHeaders = {
 		method: "GET",
 		headers: {
 			"Accept": "application/json"
 		},
 	}
-	fetch(API, fetchHeaders)
-		.then((res) => {
-			res.json()
-			.then(data => {
-				callback(data);				
-			})
-			.catch(error => console.log(error))
-		})
-		.catch(error => (console.log(error)))
+	try {
+		const data = await fetch(API, fetchHeaders)
+		return data.json();
+	} catch (error) {
+		
+	}
 }
 
-const updateAnnotationData = (data, callback) => {
+const updateAnnotationData = async (API, data) => {
 	const fetchHeaders = {
 		method: "POST",
 		headers: {
@@ -62,11 +55,12 @@ const updateAnnotationData = (data, callback) => {
 		body: JSON.stringify(data)
 	}
 
-	fetch(API, fetchHeaders)
-		.then((res) => {
-			callback(res);
-		})
-		.catch(error => (console.log(error)))
+	try {
+		const data = await fetch(API, fetchHeaders)
+		return true;
+	} catch (error) {
+		return false;
+	}
 }
 
 const Alert = (props) => {
@@ -157,53 +151,48 @@ class TwoDimensionalVideo extends Component {
 		this.initialState();
 	}
 
-	componentDidUpdate() {
-		// console.log("component did update", this.state);
-	}
-
-	initialState = () => {
+	initialState = async () => {
 		this.setState(prevState => {
 			return {
 				apicallStatus: "calling"
 			}
 		});
-		getAnnotationData(res => {
-			try {
-				const data = JSON.parse(res.data);	
-				if(data) {
-					this.setState((prevState) => {		
-						for (let i = 0; i < data.annotations.length; i++) {
-							let name = data.annotations[i];		
-							const { shapeType } = data.entities.annotations[name];
-							if (shapeType === "polygon" || shapeType === "chain" || shapeType === "line") {
-								data.entities.annotations[name] = Polygon({
-									...data.entities.annotations[name]
-								})
-							} else {
-								data.entities.annotations[name] = Rectangle({
-									...data.entities.annotations[name]
-								})
-							}
-							
+		try {
+			const res = await getAnnotationData(this.props.serverURL);
+			const data = JSON.parse(res.data);	
+			if(data) {
+				this.setState((prevState) => {		
+					for (let i = 0; i < data.annotations.length; i++) {
+						let name = data.annotations[i];		
+						const { shapeType } = data.entities.annotations[name];
+						if (shapeType === "polygon" || shapeType === "chain" || shapeType === "line") {
+							data.entities.annotations[name] = Polygon({
+								...data.entities.annotations[name]
+							})
+						} else {
+							data.entities.annotations[name] = Rectangle({
+								...data.entities.annotations[name]
+							})
 						}
-						return {
-							initialAnnotations: data.annotations,
-							apicallStatus: "called",
-							annotations: data.annotations,
-							entities: {
-								annotations: data.entities.annotations
-							}					
-						}
-					});
-				}
-			} catch (error) {
-				this.setState((prevState) => {
-					return {
-						apicallStatus: "called"
+						
 					}
-				})
+					return {
+						initialAnnotations: data.annotations,
+						apicallStatus: "called",
+						annotations: data.annotations,
+						entities: {
+							annotations: data.entities.annotations
+						}					
+					}
+				});
 			}
-		});
+		} catch (error) {
+			this.setState((prevState) => {
+				return {
+					apicallStatus: "called"
+				}
+			})
+		}
 	}
 
 	/* ==================== video player ==================== */
@@ -286,7 +275,7 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleVideoNextSecFrame = () => {	
-		const played = (this.state.played * this.state.duration + 1) / this.state.duration;
+		const played = (this.state.played * this.state.duration + this.state.playbackRate) / this.state.duration;
 		this.setState((prevState) => {
 			const { entities } = prevState;
 			let { focusing } = prevState;
@@ -305,7 +294,7 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleVideoPrevSecFrame = () => {		
-		const played = (this.state.played * this.state.duration - 1) / this.state.duration;
+		const played = (this.state.played * this.state.duration - this.state.playbackRate) / this.state.duration;
 		if(played > 0) {
 			this.setState((prevState) => {
 				const { entities } = prevState;
@@ -868,33 +857,6 @@ class TwoDimensionalVideo extends Component {
 		})
 	}
 
-	// handleSubmit = () => {
-	// 	const { annotations, isSubmitted } = this.state;
-	// 	const { onSubmit, hasReview, emptyCheckSubmissionWarningText } = this.props;
-
-	// 	if (this.isEmptyAnnotationOrIncident()) {
-	// 		this.setState({ isDialogOpen: true, dialogTitle: 'Submission warning', dialogMessage: emptyCheckSubmissionWarningText });
-	// 		return;
-	// 	}
-	// 	if (!isSubmitted && hasReview) {
-	// 		this.setState({
-	// 			isLoop: true, isSubmitted: true, played: 0, isPlaying: true, focusing: '',
-	// 		});
-	// 		return;
-	// 	}
-	// 	const { videoWidth, annotationHeight, entities } = this.state;
-	// 	const { url } = this.props;
-	// 	const annotation = new schema.Entity('annotations');
-	// 	const denormalizedAnnotations = denormalize({ annotations }, { annotations: [annotation] }, entities).annotations;
-	// 	denormalizedAnnotations.forEach((ann) => {
-	// 		delete ann.isManipulatable;
-	// 	});
-	// 	const data = {
-	// 		url, videoWidth, annotationHeight, annotations: denormalizedAnnotations,
-	// 	};
-	// 	onSubmit(data);
-	// }
-
     handleDialogToggle = () => this.setState(prevState => ({ isDialogOpen: !prevState.isDialogOpen }));
 
 	handleAddClick = () => this.setState(prevState => ({ isAdding: !prevState.isAdding, isPlaying: false }));
@@ -972,7 +934,7 @@ class TwoDimensionalVideo extends Component {
 		}, 3000);
 	}
 
-	handleSaveData = () => {		
+	handleSaveData = async () => {		
 		this.setState(prevState => {
 			return {
 				apicallStatus: "calling",
@@ -986,20 +948,26 @@ class TwoDimensionalVideo extends Component {
 		};
 		console.log(entities);
 		data = JSON.stringify(data);
-		updateAnnotationData({
-			"video_id": 111,
-			"user_id": 1,
-			"data": data,
-			"video_uui": "73xK6JaeqV9MrGR2BlVO"
-		}, (res) => {
-			console.log("updated data");
-			this.initialState();
-			this.showNotification({
-				title: "Good job, ",
-				message: "Saved data successfully.",
-				type: "info",
-			});			
-		});
+		
+		try {
+			const res = await updateAnnotationData(this.props.serverURL, {
+				"video_id": 111,
+				"user_id": 1,
+				"data": data,
+				"video_uui": "73xK6JaeqV9MrGR2BlVO"
+			});
+			if (res) {
+				console.log("updated data");
+				this.initialState();
+				this.showNotification({
+					title: "Good job, ",
+					message: "Saved data successfully.",
+					type: "info",
+				});
+			}
+		} catch (error) {
+			
+		}
 	}
 
 	handleShape(shape_value) {

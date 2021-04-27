@@ -6,7 +6,7 @@ import {
 } from 'reactstrap';
 import { MdDelete } from 'react-icons/md';
 import { FaArrowDown } from 'react-icons/fa';
-import RoundedNumber from 'shared/components/Math/RoundedNumber/RoundedNumber.jsx';
+import RoundedNumber from '../../../../shared/components/Math/RoundedNumber/RoundedNumber.jsx';
 import TwoDimensionalVideoContext from '../TwoDimensionalVideo/twoDimensionalVideoContext';
 import Duration from '../VideoPlayer/FormattedTime/FormattedTime.jsx';
 import 'bootstrap/dist/css/bootstrap.css';

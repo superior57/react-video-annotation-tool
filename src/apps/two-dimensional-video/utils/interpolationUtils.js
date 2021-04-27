@@ -1,4 +1,4 @@
-import { getLinearInterpolatedValue } from 'shared/utils/mathUtils';
+import { getLinearInterpolatedValue } from '../../../shared/utils/mathUtils';
 
 const INTERPOLATION_TYPE = {
 	LENGTH: 'LENG',

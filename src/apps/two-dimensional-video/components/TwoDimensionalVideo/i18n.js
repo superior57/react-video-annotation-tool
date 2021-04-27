@@ -1,4 +1,4 @@
-import { getI18nextInstance } from 'shared/utils/i18nextUtils';
+import { getI18nextInstance } from '../../../../shared/utils/i18nextUtils';
 
 const resources = {
 	en: {

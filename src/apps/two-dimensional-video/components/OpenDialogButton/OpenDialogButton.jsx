@@ -1,7 +1,7 @@
 import React, { useState, Fragment } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from 'reactstrap';
-import PopupDialog from 'shared/components/PopupDialog/PopupDialog.jsx';
+import PopupDialog from '../../../../shared/components/PopupDialog/PopupDialog.jsx';
 
 const OpenDialogButton = ({
 	className,

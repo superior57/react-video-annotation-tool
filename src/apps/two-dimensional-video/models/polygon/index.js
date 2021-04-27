@@ -1,4 +1,4 @@
-import { withBasicIdentities } from 'shared/models/node/index';
+import { withBasicIdentities } from '../../../../shared/models/node/index';
 const canClearRedundantIncidents = state => ({
 	clearRedundantIncidents: (status) => {
 		const { incidents } = state;

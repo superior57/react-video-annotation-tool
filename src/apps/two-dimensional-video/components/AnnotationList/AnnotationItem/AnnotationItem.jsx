@@ -7,14 +7,14 @@ import {
 import { MdCallSplit, MdDelete } from 'react-icons/md';
 import { FaChevronDown, FaChevronUp, FaPencilAlt } from 'react-icons/fa';
 import { IoMdEyeOff, IoMdEye } from 'react-icons/io';
-import { SPLIT, HIDE, SHOW } from 'models/2DVideo';
+import { SPLIT, HIDE, SHOW } from '../../../../../models/2DVideo';
 import IncidentList from '../../IncidentList/IncidentList.jsx';
 import TwoDimensionalVideoContext from '../../TwoDimensionalVideo/twoDimensionalVideoContext';
 import OpenDialogButton from '../../OpenDialogButton/OpenDialogButton.jsx';
 import { isDialogDisabledConst } from '../isDialogDisabledReducer';
 import 'bootstrap/dist/css/bootstrap.css';
 import './annotationItem.scss';
-import ColorPicker from "shared/components/ColorPicker/ColorPicker";
+import ColorPicker from "../../../../../shared/components/ColorPicker/ColorPicker";
 
 const AnnotationItem = ({
 	className,

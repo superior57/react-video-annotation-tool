@@ -1,5 +1,5 @@
-import { TwoDimensionalVideo } from 'apps/two-dimensional-video/index';
+import { TwoDimensionalVideo } from '../apps/two-dimensional-video/index';
 
 export {
-	TwoDimensionalVideo,
+	TwoDimensionalVideo
 };

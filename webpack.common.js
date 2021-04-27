@@ -9,7 +9,7 @@ module.exports = {
 				loader: 'babel-loader',
 				options: {
 					presets: ['env', 'react'],
-					plugins: ['transform-object-rest-spread', 'transform-class-properties'],
+					plugins: ['transform-object-rest-spread', 'transform-class-properties', 'babel-plugin-transform-runtime'],
 				},
 			},
 			{
