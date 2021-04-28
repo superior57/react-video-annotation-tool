@@ -26,6 +26,9 @@ const DrawableVideoPlayer = ({
 		isEmptyCheckEnable,
 		playerRef,
 		shape,
+		fullscreen,
+		zoomRate,
+		showAnnotation,
 		onVideoReady,
 		onVideoProgress,
 		onVideoDuration,
@@ -46,13 +49,17 @@ const DrawableVideoPlayer = ({
 		onCanvasVertexMouseDown,
 		onCanvasLineMouseDown,
 		onCanvasVertexDragEnd,
-		onCanvasGroupMove
+		onCanvasGroupMove,
+		onPlayerFullScreen,
+		onPlayerShowAnnotation
 	} = twoDimensionalVideoContext;
 
 	const rootClassName = `drawable-video-player${className ? ` ${className}` : ''}`;
 	return (
-		<div className={ rootClassName }>
-			<div className='drawable-video-player__player-canvas-wrapper d-flex justify-content-center mb-3'>
+		<div id="player-wrap" className={ rootClassName }>
+			<div className='drawable-video-player__player-canvas-wrapper d-flex justify-content-center mb-3' style={{
+				zoom: fullscreen ? zoomRate : 1
+			}}>
 				<VideoPlayerScreen
 					playerRef={ playerRef }
 					onReady={ onVideoReady }
@@ -65,31 +72,35 @@ const DrawableVideoPlayer = ({
 					isLoop={ isLoop }
 					playbackRate={ playbackRate }
 				/>
-				<Canvas
-					width={ width }
-					height={ height }
-					played={ played }
-					focusing={ focusing }
-					isAdding={ isAdding }
-					entities={ entities }
-					annotations={ annotations }
-					onStageMouseDown={ onCanvasStageMouseDown }
-					onGroupMouseDown={ onCanvasGroupMouseDown }
-					onGroupDragEnd={ onCanvasGroupDragEnd }
-					onDotMouseDown={ onCanvasDotMouseDown }
-					onDotDragEnd={ onCanvasDotDragEnd }
-					isEmptyCheckEnable={ isEmptyCheckEnable }
-					onVertexMouseDown={onCanvasVertexMouseDown}
-					onLineMouseDown={onCanvasLineMouseDown}
-					onVertexDragEnd={onCanvasVertexDragEnd}
-					onGroupMove={onCanvasGroupMove}
-				/>
+				{
+					(showAnnotation) && <Canvas
+						width={ width }
+						height={ height }
+						played={ played }
+						focusing={ focusing }
+						isAdding={ isAdding }
+						entities={ entities }
+						annotations={ annotations }
+						onStageMouseDown={ onCanvasStageMouseDown }
+						onGroupMouseDown={ onCanvasGroupMouseDown }
+						onGroupDragEnd={ onCanvasGroupDragEnd }
+						onDotMouseDown={ onCanvasDotMouseDown }
+						onDotDragEnd={ onCanvasDotDragEnd }
+						isEmptyCheckEnable={ isEmptyCheckEnable }
+						onVertexMouseDown={onCanvasVertexMouseDown}
+						onLineMouseDown={onCanvasLineMouseDown}
+						onVertexDragEnd={onCanvasVertexDragEnd}
+						onGroupMove={onCanvasGroupMove}
+					/>
+				}
 			</div>
 			<VideoPlayerControl
 				isPlaying={ isPlaying }
 				played={ played }
 				playbackRate={ playbackRate }
 				duration={ duration }
+				fullscreen={ fullscreen }
+				showAnnotation={showAnnotation}
 				onSliderMouseUp={ onVideoSliderMouseUp }
 				onSliderMouseDown={ onVideoSliderMouseDown }
 				onSliderChange={ onVideoSliderChange }
@@ -98,6 +109,8 @@ const DrawableVideoPlayer = ({
 				onSpeedChange={ onVideoSpeedChange }
 				onNextSecFrame={onVideoNextSecFrame}
 				onPrevSecFrame={onVideoPrevSecFrame}
+				onFullScreen={onPlayerFullScreen}
+				onShowAnnotation={onPlayerShowAnnotation}
 			/>
 		</div>
 	);

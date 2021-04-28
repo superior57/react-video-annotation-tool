@@ -20,7 +20,7 @@
     "image annotation",
     "computer vision"
   ],
-  "author": "Chi Lin <bennylin77@gmail.com>",
+  "author": "Chi Lin <petpanda0057@gmail.com>",
   "license": "MIT",
   "devDependencies": {
     "babel-cli": "^6.26.0",
@@ -70,7 +70,8 @@
     "react-player": "^1.11.1",
     "react-scroll": "^1.7.12",
     "react-spinners": "^0.10.6",
-    "reactstrap": "^6.5.0"
+    "reactstrap": "^6.5.0",
+    "screenfull": "^5.1.0"
   },
   "peerDependencies": {
     "react": "^16.8.6",

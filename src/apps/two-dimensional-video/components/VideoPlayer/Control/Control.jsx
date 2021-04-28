@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
-import { MdPlayArrow, MdPause, MdReplay, MdSkipPrevious, MdSkipNext } from 'react-icons/md';
+import { MdPlayArrow, MdPause, MdReplay, MdSkipPrevious, MdSkipNext, MdFullscreen, MdFullscreenExit, MdMovieFilter, MdMovieCreation } from 'react-icons/md';
 import {
 	Dropdown, DropdownToggle, DropdownMenu, DropdownItem, Button, ButtonGroup, Input
 } from 'reactstrap';
@@ -15,6 +15,8 @@ const Control = ({
 	played,
 	playbackRate,
 	duration,
+	fullscreen,
+	showAnnotation,
 	onSliderMouseUp,
 	onSliderMouseDown,
 	onSliderChange,
@@ -22,20 +24,24 @@ const Control = ({
 	onPlayPause,
 	onSpeedChange,
 	onNextSecFrame,
-	onPrevSecFrame
+	onPrevSecFrame,
+	onFullScreen,
+	onShowAnnotation
 }) => {
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 	const { t } = useTranslation('twoDimensionalVideo');
 	return (
-		<div className={ `player-control${className ? ` ${className}` : ''}` }>
+		<div className={ `player-control${className ? ` ${className}` : ''}` } >
 			<Slider
 				played={ played }
 				onMouseUp={ onSliderMouseUp }
 				onMouseDown={ onSliderMouseDown }
 				onChange={ onSliderChange }
 			/>
-			<div className='d-flex mt-2'>
-				<div className='mr-auto d-flex align-items-center'>
+			<div className='d-flex mt-2' style={{
+					background: fullscreen ? 'gray' : ''
+			}}>
+				<div className='mr-auto d-flex align-items-center' >
 					<ButtonGroup>
 						<Button className='player-control__button d-flex align-items-center' color='link' onClick={ onRewind }>
 							<MdReplay className='player-control__icon' />
@@ -44,7 +50,7 @@ const Control = ({
 							{isPlaying ? <MdPause className='player-control__icon' /> : <MdPlayArrow className='player-control__icon' />}
 						</Button>
 					</ButtonGroup>
-					{/* <Dropdown isOpen={ isDropdownOpen } toggle={ () => setIsDropdownOpen(!isDropdownOpen) } size='sm'>
+					<Dropdown isOpen={ isDropdownOpen } toggle={ () => setIsDropdownOpen(!isDropdownOpen) } size='sm'>
 						<DropdownToggle className='player-control__speed-toggle d-flex align-items-center' color='link' caret>
 							{ 'x' }
 							{ playbackRate }
@@ -55,11 +61,20 @@ const Control = ({
 							<DropdownItem className='player-control__speed-item' onClick={ () => onSpeedChange(0.5) }>0.5</DropdownItem>
 							<DropdownItem className='player-control__speed-item' onClick={ () => onSpeedChange(1) }>1</DropdownItem>
 							<DropdownItem className='player-control__speed-item' onClick={ () => onSpeedChange(1.5) }>1.5</DropdownItem>
-							<DropdownItem className='player-control__speed-item' onClick={ () => onSpeedChange(2) }>2</DropdownItem>
 						</DropdownMenu>
-					</Dropdown> */}
+					</Dropdown>
 				</div>
-				<div className='d-flex align-items-center'>
+				<div className='d-flex align-items-center pr-4'>
+					<Button className='player-control__button d-flex align-items-center' color='link' onClick={ onShowAnnotation }>
+						{
+							showAnnotation ? <MdMovieFilter className='player-control__icon' /> : <MdMovieCreation className='player-control__icon' />
+						}
+					</Button>
+					<Button className='player-control__button d-flex align-items-center' color='link' onClick={ onFullScreen }>
+						{
+							fullscreen ? <MdFullscreenExit className='player-control__icon' /> : <MdFullscreen className='player-control__icon' />
+						}
+					</Button>
 					<ButtonGroup>
 						<Button className='player-control__button d-flex align-items-center' color='link' onClick={ onPrevSecFrame }>
 							<MdSkipPrevious className='player-control__icon' />

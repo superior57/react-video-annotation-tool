@@ -23,6 +23,8 @@ import { SyncLoader as Loader } from "react-spinners";
 import { shapeTypeList as shapeList, getShapeTypeKey } from "../../models/shape";
 import { Polygon } from '../../models/polygon';
 import { Vertex } from '../../models/vertex';
+import screenfull from 'screenfull';
+import ReactDom from 'react-dom';
 
 
 
@@ -136,10 +138,29 @@ class TwoDimensionalVideo extends Component {
 				open: false,
 			},
 			apicallStatus: "saved",
-			shape: 'circle'
+			shape: 'circle',
+			fullscreen: false,
+			zoomRate: 0,
+			showAnnotation: true
 		};
 		this.UndoRedoState = new UndoRedo();
 		this.change = this.change.bind(this.state);
+
+		screenfull.onchange((e) => {
+			const { fullscreen } = this.state;
+			const el_player = ReactDom.findDOMNode(this.player);
+			const [ player_width, document_width, player_height, document_height ] = [
+				el_player.clientWidth, 
+				window.innerWidth,
+				el_player.clientHeight,
+				window.innerHeight
+			]			
+			let zoomRate = document_width / player_width;
+			if (zoomRate > document_height / (player_height + 70))
+				zoomRate = document_height / (player_height + 70);
+
+			this.setState({ fullscreen: !fullscreen, zoomRate })
+		})
 	}
 	
 	
@@ -226,7 +247,7 @@ class TwoDimensionalVideo extends Component {
 		this.player.seekTo(0);
 	}
 
-	handleVideoPlayPause = () => {
+	handleVideoPlayPause = () => {		
 		this.setState(prevState => ({ isPlaying: !prevState.isPlaying }));
 	}
 
@@ -1206,6 +1227,18 @@ class TwoDimensionalVideo extends Component {
 		</div>)
 	}
 
+	handlePlayerFullScreen = () => {
+		const { fullscreen } = this.state;
+		const player_wrap = document.getElementById('player-wrap');
+		if (fullscreen)
+			screenfull.exit();
+		else 
+			screenfull.request(player_wrap);		
+	}
+
+	handlePlayerShowAnnotation = () => {
+		this.setState({ showAnnotation: !this.state.showAnnotation })
+	}
 
 	render() {
 		const {
@@ -1225,6 +1258,9 @@ class TwoDimensionalVideo extends Component {
 			dialogTitle,
 			dialogMessage,
 			shape,
+			fullscreen,
+			zoomRate,
+			showAnnotation,
 		} = this.state;
 		const {
 			className,
@@ -1256,6 +1292,9 @@ class TwoDimensionalVideo extends Component {
 			emptyCheckAnnotationItemWarningText,
 			emptyAnnotationReminderText,
 			shape,
+			fullscreen,
+			zoomRate,
+			showAnnotation,
 
 			onVideoReady: this.handleVideoReady,
 			onVideoProgress: this.handleVideoProgress,
@@ -1285,19 +1324,12 @@ class TwoDimensionalVideo extends Component {
 			onCanvasLineMouseDown: this.handleCanvasFocusing,
 			onCanvasVertexDragEnd: this.handleCanvasVertexDragEnd,
 			onAnnotationChangeLabel: this.handleAnnotationChangeLabel,
-			onCanvasGroupMove: this.handleCanvasGroupMove
+			onCanvasGroupMove: this.handleCanvasGroupMove,
+			onPlayerFullScreen: this.handlePlayerFullScreen,
+			onPlayerShowAnnotation: this.handlePlayerShowAnnotation
 		};
 
 		let controlPanelUI = null;
-		// if (isSubmitted) {
-		// 	controlPanelUI = (
-		// 		<Review
-		// 			height={ annotationHeight }
-		// 			onConfirmSubmit={ this.handleSubmit }
-		// 			onCancelSubmit={ this.handleReviewCancelSubmission }
-		// 		/>
-		// 	);
-		// } else {
 		controlPanelUI = (
 			<div className="w-100 mb-auto overflow-auto" style={{
 				maxHeight: 'calc(100% - 100px)'
@@ -1306,13 +1338,6 @@ class TwoDimensionalVideo extends Component {
 				<AnnotationList />
 			</div>
 		);
-		// }
-
-		const options = [
-			{ value: 'chocolate', label: 'Chocolate' },
-			{ value: 'strawberry', label: 'Strawberry' },
-			{ value: 'vanilla', label: 'Vanilla' }
-		]
 
 		const rootClassName = `two-dimensional-video${className ? ` ${className}` : ''}`;
 		return (
@@ -1331,10 +1356,6 @@ class TwoDimensionalVideo extends Component {
 							<div className='mb-3 two-dimensional-video__control-panel px-3 py-3 position-relative'>
 								<div className='w-100 pb-3 clearfix'>
 									{this.renderAddButtonUI()}
-									{/* <ButtonGroup className='float-right'>
-										<Button disabled={ this.UndoRedoState.previous.length === 0 } outline onClick={ this.handleUndo }><MdUndo /></Button>
-										<Button disabled={ this.UndoRedoState.next.length === 0 } outline onClick={ this.handleRedo }><MdRedo /></Button>
-									</ButtonGroup> */}
 								</div>
 								{ controlPanelUI }
 								{ isSubmitted ? '' : (
