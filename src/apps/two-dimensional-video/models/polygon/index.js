@@ -25,7 +25,8 @@ const Polygon = ({
 	incidents = [],
 	arrowHead = false,
 	wave = false,
-	lineMode = "0"
+	lineMode = "0",
+	videoWidth = 0
 }) => {
 	const state = {
 		color,
@@ -39,7 +40,8 @@ const Polygon = ({
 		incidents,
 		arrowHead,
 		lineMode,
-		wave
+		wave,
+		videoWidth
 	};
 	return Object.assign(state, withBasicIdentities({ id, name, label }), canClearRedundantIncidents(state));
 };

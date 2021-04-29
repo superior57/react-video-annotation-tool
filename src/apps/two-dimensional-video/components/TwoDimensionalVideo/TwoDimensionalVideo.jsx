@@ -26,6 +26,25 @@ import { Vertex } from '../../models/vertex';
 import screenfull from 'screenfull';
 import ReactDom from 'react-dom';
 
+import CircleIcon from './img/circle.png';
+import RectIcon from './img/rect.png';
+import ChainIcon from './img/chain.png';
+import EndpointIcon from './img/endpoint.png';
+import LineIcon from './img/line.png';
+import PolygonIcon from './img/polygon.png';
+import TextIcon from './img/text.png';
+
+
+const shapeIcons = {
+	'circle':  CircleIcon,
+	'rect':  RectIcon,
+	'chain':  ChainIcon,
+	'endpoint':  EndpointIcon,
+	'line':  LineIcon,
+	'polygon':  PolygonIcon,
+	'text':  TextIcon,
+}
+
 
 
 const getAnnotationData = async (API) => {
@@ -78,13 +97,13 @@ const SelectShape = (props) => {
 		<div className={props.className}>
 			{ props.options.map(shape => 
 				<Button 
-					className={`mr-1`} 
-					outline={props.value != shape.value}
-					color="dark"
+					className={`mr-3 mb-3 btn-shape ${props.value == shape.value ? 'selected' : ''}`} 
+					outline
+					color="default"
 					onClick={() => {props.onClick(shape.value)}}
 					key={shape.value}
 				>
-					{shape.label}
+					<img src={shapeIcons[shape.value]} width={30} height={30} alt={shape.label} />	
 				</Button>)
 			}
 		</div>
@@ -139,28 +158,96 @@ class TwoDimensionalVideo extends Component {
 			},
 			apicallStatus: "saved",
 			shape: 'circle',
+			color: 'rgba(250, 8, 12, .37)',
+			labelText: "",
+			arrowHead: false,
+			wave: false,
+			lineMode: '0',
 			fullscreen: false,
 			zoomRate: 0,
-			showAnnotation: true
+			showAnnotation: true,
+			edit: false,
+			isFirstDrawing: true
 		};
 		this.UndoRedoState = new UndoRedo();
 		this.change = this.change.bind(this.state);
+		this.prevVideoWidth = 0;
 
 		screenfull.onchange((e) => {
-			const { fullscreen } = this.state;
+			const { fullscreen, videoWidth } = this.state;
 			const el_player = ReactDom.findDOMNode(this.player);
 			const [ player_width, document_width, player_height, document_height ] = [
 				el_player.clientWidth, 
 				window.innerWidth,
 				el_player.clientHeight,
 				window.innerHeight
-			]			
+			]
 			let zoomRate = document_width / player_width;
 			if (zoomRate > document_height / (player_height + 70))
 				zoomRate = document_height / (player_height + 70);
+			let tar_width = player_width * zoomRate;
 
-			this.setState({ fullscreen: !fullscreen, zoomRate })
+			if (fullscreen) {
+				tar_width = this.prevVideoWidth;
+				zoomRate = tar_width / videoWidth;
+			} else {
+				this.prevVideoWidth = this.state.videoWidth;
+			}
+			
+			this.setState((prevState) => {		
+				const { entities, annotations } = prevState;
+				
+				return {
+					annotations: annotations,
+					entities: {
+						annotations: this.getEntitiesZoom(entities, annotations, zoomRate).annotations
+					},
+					fullscreen: !fullscreen, 
+					zoomRate: 1,
+					videoWidth: tar_width,
+					annotationHeight: parseFloat(tar_width) * (9 / 16)						
+				}
+			});
 		})
+	}
+
+	getEntitiesZoom = (entities, annotations, zoomRate) => {
+		for (let i = 0; i < annotations.length; i++) {
+			let name = annotations[i];		
+			const { shapeType, incidents } = entities.annotations[name];
+			
+			if (shapeType === "polygon" || shapeType === "chain" || shapeType === "line") {
+				entities.annotations[name] = Polygon({
+					...entities.annotations[name],
+					incidents: incidents.map(incident => ({
+						...incident,
+						vertices: incident.vertices.map(vertice => {
+							const { x, y } = vertice;
+							return {
+								...vertice,
+								x: parseFloat(x) * zoomRate,
+								y: parseFloat(y) * zoomRate
+							}
+						})
+					}))
+				})
+			} else {
+				entities.annotations[name] = Rectangle({
+					...entities.annotations[name],
+					incidents: incidents.map(incident => {
+						const { x, y, width, height } = incident;
+						return {
+							...incident,
+							x: parseFloat(x) * zoomRate,
+							y: parseFloat(y) * zoomRate,
+							width: parseFloat(width) * zoomRate,
+							height: parseFloat(height) * zoomRate
+						}
+					})
+				})
+			}			
+		}
+		return entities;
 	}
 	
 	
@@ -183,16 +270,40 @@ class TwoDimensionalVideo extends Component {
 			const data = JSON.parse(res.data);	
 			if(data) {
 				this.setState((prevState) => {		
+					const { videoWidth: cur_videoWidth } = prevState;
 					for (let i = 0; i < data.annotations.length; i++) {
 						let name = data.annotations[i];		
-						const { shapeType } = data.entities.annotations[name];
+						const { shapeType, videoWidth, incidents } = data.entities.annotations[name];
+						let zoomRate = cur_videoWidth / videoWidth;
+						
 						if (shapeType === "polygon" || shapeType === "chain" || shapeType === "line") {
 							data.entities.annotations[name] = Polygon({
-								...data.entities.annotations[name]
+								...data.entities.annotations[name],
+								incidents: incidents.map(incident => ({
+									...incident,
+									vertices: incident.vertices.map(vertice => {
+										const { x, y } = vertice;
+										return {
+											...vertice,
+											x: parseFloat(x) * zoomRate,
+											y: parseFloat(y) * zoomRate
+										}
+									})
+								}))
 							})
 						} else {
 							data.entities.annotations[name] = Rectangle({
-								...data.entities.annotations[name]
+								...data.entities.annotations[name],
+								incidents: incidents.map(incident => {
+									const { x, y, width, height } = incident;
+									return {
+										...incident,
+										x: parseFloat(x) * zoomRate,
+										y: parseFloat(y) * zoomRate,
+										width: parseFloat(width) * zoomRate,
+										height: parseFloat(height) * zoomRate
+									}
+								})
 							})
 						}
 						
@@ -203,7 +314,13 @@ class TwoDimensionalVideo extends Component {
 						annotations: data.annotations,
 						entities: {
 							annotations: data.entities.annotations
-						}					
+						},
+						isAdding: false,
+						focusing: '',
+						wave: false,
+						arrowHead: false,
+						lineMode: '0',
+						isFirstDrawing: true									
 					}
 				});
 			}
@@ -222,7 +339,7 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleVideoReady = () => {
-		this.setState({ annotationHeight: document.getElementById('react-player').children[0].clientHeight });
+		this.setState({ annotationHeight: parseFloat(this.state.videoWidth) * (9 / 16) });
 	}
 
 	handleVideoProgress = (state) => {
@@ -338,11 +455,10 @@ class TwoDimensionalVideo extends Component {
 	/* ==================== canvas ==================== */
 
 	handleCanvasStageMouseDown = (e) => {
-		const { isAdding, shape } = this.state;
+		const { isAdding, shape, color, videoWidth, fullscreen } = this.state;
 		const stage = e.target.getStage();
 		const position = stage.getPointerPosition();
 		const uniqueKey = getUniqueKey();
-		const color = "rgba(250, 8, 12, .37)"
 
 		if( shape === "polygon" || shape === "chain" || shape === "line" ) {
 			let { x, y } = stage.getPointerPosition();
@@ -355,7 +471,8 @@ class TwoDimensionalVideo extends Component {
 				// prevent x, y exceeding boundary
 				x = x < 0 ? 0 : x; x = x > stage.width() ? stage.width() : x;
 				y = y < 0 ? 0 : y; y = y > stage.height() ? stage.height() : y;
-				this.UndoRedoState.save(prevState);
+				if (!this.state.fullscreen)
+					this.UndoRedoState.save({ ...prevState, isAdding: false, edit: false });			
 				// first time adding
 				if (!focusing || !entities.annotations[focusing].incidents || entities.annotations[focusing].isClosed || ( entities.annotations[focusing].shapeType != "polygon" && entities.annotations[focusing].shapeType != "chain" && entities.annotations[focusing].shapeType != "line" ) ) {
 					incidents = [];
@@ -366,7 +483,9 @@ class TwoDimensionalVideo extends Component {
 						id: `${uniqueKey}`, name: `${uniqueKey}`, x, y
 					}))
 					entities.annotations[`${uniqueKey}`] = Polygon({
-						id: `${uniqueKey}`, name: `${uniqueKey}`, label: `${getLastAnnotationLabel(annotations, entities) + 1}`, color, incidents, shapeType: shape, labelText: `${getLastAnnotationLabel(annotations, entities) + 1} Layout`
+						id: `${uniqueKey}`, name: `${uniqueKey}`, label: `${getLastAnnotationLabel(annotations, entities) + 1}`, 
+						color, incidents, shapeType: shape, labelText: this.state.labelText, lineMode: this.state.lineMode, 
+						arrowHead: this.state.arrowHead, wave: this.state.wave, videoWidth: videoWidth
 					});
 					return {
 						focusing: `${uniqueKey}`,
@@ -395,16 +514,18 @@ class TwoDimensionalVideo extends Component {
 			
 			// const color = colors[getRandomInt(colors.length)];			
 			this.setState((prevState) => {
-				this.UndoRedoState.save({ ...prevState, isAdding: false }); // Undo/Redo
+				if (!this.state.fullscreen)
+					this.UndoRedoState.save({ ...prevState, isAdding: false }); // Undo/Redo
 				const {
-					annotations, entities,
+					annotations, entities, videoWidth
 				} = prevState;
 				const incidents = [];
 				incidents.push(Incident({
 					id: `${uniqueKey}`, name: `${uniqueKey}`, x: position.x, y: position.y, height: 1, width: 1, time: prevState.played,
 				}));
 				entities.annotations[`${uniqueKey}`] = Rectangle({
-					id: `${uniqueKey}`, name: `${uniqueKey}`, label: `${getLastAnnotationLabel(annotations, entities) + 1}`, color, incidents, shapeType: shape, labelText: `${getLastAnnotationLabel(annotations, entities) + 1} Layout`
+					id: `${uniqueKey}`, name: `${uniqueKey}`, label: `${getLastAnnotationLabel(annotations, entities) + 1}`, 
+					color, incidents, shapeType: shape, labelText: this.state.labelText, videoWidth: videoWidth
 				});
 				return {
 					isAdding: false,
@@ -440,7 +561,8 @@ class TwoDimensionalVideo extends Component {
 			const position = group.position();
 			const uniqueKey = getUniqueKey();
 			this.setState((prevState) => {
-				this.UndoRedoState.save(prevState);
+				if (!this.state.fullscreen)
+					this.UndoRedoState.save({...prevState, isAdding: false, edit: false});
 				const { entities, played } = prevState;
 				const { incidents, shapeType } = entities.annotations[group.name()];
 				if ( shapeType === "chain" || shapeType === "polygon" || shapeType === "line" ) {
@@ -449,30 +571,20 @@ class TwoDimensionalVideo extends Component {
 							// skip elapsed incidents
 							if (i !== incidents.length - 1 && played >= incidents[i + 1].time) continue;
 							if (played === incidents[i].time) {
-								// console.log("232323", diffX, position.x, incidents[0].x)
 								var diffX = parseFloat(position.x) - parseFloat(incidents[i].x),
 								diffY = parseFloat(position.y) - parseFloat(incidents[i].y);
-
-								console.log("i =>", i);
-								console.log("moved x =>", diffX);
-								console.log("moved Y", diffY)
 								incidents[i].x = position.x;
 								incidents[i].y = position.y;
 								incidents[i].vertices = incidents[i].vertices.map(vt => {
-									console.log("vt =>", parseFloat(diffX));
 									return {
 										...vt,
-										// x: parseFloat(vt.x) + parseFloat(diffX),
-										// y: parseFloat(vt.y) + position.y
 									};
 								})
 								break;
 							}
 							if (i === incidents.length - 1) {
-								console.log("333", parseFloat(position.x) - parseFloat(incidents[0].x));
 								var diffX = parseFloat(position.x) - parseFloat(incidents[0].x),
 									diffY = parseFloat(position.y) - parseFloat(incidents[0].y);
-								console.log("444", diffX);
 								incidents.push(Incident({
 									x: position.x, y: position.y, time: played, vertices: incidents[0].vertices.map(vt => {
 										return {
@@ -538,7 +650,8 @@ class TwoDimensionalVideo extends Component {
 		const maxY = Math.max(topLeft.getAbsolutePosition().y, topRight.getAbsolutePosition().y, bottomRight.getAbsolutePosition().y, bottomLeft.getAbsolutePosition().y);
 		const minY = Math.min(topLeft.getAbsolutePosition().y, topRight.getAbsolutePosition().y, bottomRight.getAbsolutePosition().y, bottomLeft.getAbsolutePosition().y);
 		this.setState((prevState, props) => {
-			this.UndoRedoState.save(prevState);
+			if (!this.state.fullscreen)
+				this.UndoRedoState.save({...prevState, edit: false});
 			const { entities, played } = prevState;
 			const { annotations } = entities;
 			const { incidents } = entities.annotations[group.name()];
@@ -563,8 +676,12 @@ class TwoDimensionalVideo extends Component {
 
 	handleAnnotationItemClick = name => {
 		const { entities } = this.state;
-		const { shapeType } = entities.annotations[name];
-		this.setState({ focusing: name, shape: shapeType });
+		const { shapeType, incidents } = entities.annotations[name];
+		let cur_played = 0;
+		if (incidents.length > 0) {
+			cur_played = incidents[0].time;
+		}
+		this.setState({ focusing: name, shape: shapeType, played: cur_played });
 	};
 
 	handleIncidentItemClick = (incident) => {
@@ -576,7 +693,8 @@ class TwoDimensionalVideo extends Component {
 	handleIncidentItemDelete = (e) => {
 		const { annotationName, incidentName } = e;
 		this.setState((prevState) => {
-			this.UndoRedoState.save(prevState);
+			if (!this.state.fullscreen)
+				this.UndoRedoState.save(prevState);
 			const { entities } = prevState;
 			const { annotations } = entities;
 			const incidents = entities.annotations[annotationName].incidents.filter((t) => {
@@ -591,7 +709,8 @@ class TwoDimensionalVideo extends Component {
 
 	handleListAnnotationDelete = (name) => {
 		this.setState((prevState) => {
-			this.UndoRedoState.save(prevState);
+			if (!this.state.fullscreen)
+				this.UndoRedoState.save(prevState);
 			const { entities, annotations } = prevState;
 			const entitiesAnnotations = entities.annotations;
 			const { label } = entitiesAnnotations[name];
@@ -643,7 +762,8 @@ class TwoDimensionalVideo extends Component {
 		const { status } = e;
 		const uniqueKey = new Date().getTime().toString(36);
 		this.setState((prevState) => {
-			this.UndoRedoState.save(prevState);
+			if (!this.state.fullscreen)
+				this.UndoRedoState.save(prevState);
 			const { played, entities } = prevState;
 			const { incidents, shapeType } = entities.annotations[name];
 			if (shapeType === "chain" || shapeType === "polygon" || shapeType === "line") {
@@ -734,8 +854,6 @@ class TwoDimensionalVideo extends Component {
 				}
 			}
 
-			console.log("name in hidding func", name)
-			console.log("hidding ", entities.annotations[name]);
 			if (status === HIDE) entities.annotations[name].clearRedundantIncidents(status);
 			return { entities: { ...entities, annotations: entities.annotations } };
 		});
@@ -748,7 +866,8 @@ class TwoDimensionalVideo extends Component {
 		const timeNowChild2 = ((new Date()).getTime() + 2).toString(36);
 		const status = SPLIT;
 		this.setState((prevState) => {
-			this.UndoRedoState.save(prevState);
+			if (!this.state.fullscreen)
+				this.UndoRedoState.save(prevState);
 			const { played, entities, annotations } = prevState;
 			const parent = entities.annotations[name];
 			// remove ex-childrenNames
@@ -871,6 +990,7 @@ class TwoDimensionalVideo extends Component {
 			entities.annotations[focusing].isClosed = true;
 			return {
 				isAdding: false,
+				edit: false,
 				entities: { ...entities, annotations: entities.annotations }
 			}
 		})
@@ -878,7 +998,26 @@ class TwoDimensionalVideo extends Component {
 
     handleDialogToggle = () => this.setState(prevState => ({ isDialogOpen: !prevState.isDialogOpen }));
 
-	handleAddClick = () => this.setState(prevState => ({ isAdding: !prevState.isAdding, isPlaying: false }));
+	handleAddClick = () => {
+		const { isAdding, focusing, annotations, entities, edit } = this.state;
+
+		if (isAdding && focusing) {
+			this.handleCloseDraw();
+		} else {
+			this.setState(prevState => {	
+				return { 
+					focusing: "",
+					isAdding: edit ? false : !prevState.isAdding, 
+					edit: false,
+					isPlaying: false,
+					labelText: `${getLastAnnotationLabel(annotations, entities) + 1} Layer`,
+					lineMode: '0',
+					wave: false,
+					arrowHead: false
+				}
+			})
+		}		
+	};
 
 	renderAddButtonUI = () => {
 		const {
@@ -886,22 +1025,21 @@ class TwoDimensionalVideo extends Component {
 			defaultNumRootAnnotations,
 			annotations,
 			entities,
+			edit
 		} = this.state;
 		const { numAnnotationsCanBeAdded } = this.props;
 		const isAddButtonAvailable = (defaultNumRootAnnotations + numAnnotationsCanBeAdded) > getLastAnnotationLabel(annotations, entities);
 		if (isAdding || (!isAdding && isAddButtonAvailable)) {
 			return (
-				<div>
+				<div className="w-100">
 					<Button
-						disabled={ isAdding }
-						color='primary'
+						color='secondary'
 						onClick={ this.handleAddClick }
-						className='w-100 d-flex justify-content-center align-items-center float-left'
 					>
 						<MdAdd />
-						{isAdding ? 'Adding' : 'Add'}
+						{isAdding ? 'Done adding' : edit ? 'Done editing' : 'Add drawing'}
 					</Button>
-					{
+					{/* {
 						(isAdding && this.state.shape == "chain") && <Button
 							color='secondary'
 							onClick={e => this.handleCloseDraw(e)}
@@ -909,7 +1047,7 @@ class TwoDimensionalVideo extends Component {
 						>
 							Done
 						</Button>
-					}
+					} */}
 				</div>
 				
 			);
@@ -918,12 +1056,21 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleChangeColorPicker = (color) => {
-		const { focusing } = this.state;
+		const { focusing, isAdding } = this.state;
+
 		this.setState((prevState) => {
 			const { entities } = prevState;
-			const cur_entity = entities.annotations[focusing];
-			cur_entity.color = getRgbColor(color.rgb);
-			return {};
+			if (!this.state.fullscreen)
+				this.UndoRedoState.save({...prevState, edit: false});
+			if (focusing && !isAdding) {
+				const cur_entity = entities.annotations[focusing];
+				cur_entity.color = getRgbColor(color.rgb);
+				return {};
+			} else if (isAdding) {
+				return {
+					color: getRgbColor(color.rgb)
+				}
+			}
 		});
 	}
 
@@ -960,12 +1107,17 @@ class TwoDimensionalVideo extends Component {
 				focusing: ''
 			}
 		});
-		const { annotations, entities } = this.state;
+		const { annotations, entities, videoWidth: cur_videoWidth } = this.state;
+
+		for (let i = 0; i < annotations.length; i++) {
+			let name = annotations[i];		
+			const { shapeType, videoWidth, incidents } = entities.annotations[name];
+			entities.annotations[name].videoWidth = cur_videoWidth;			
+		}
 		let data = {
 			annotations,
 			entities
 		};
-		console.log(entities);
 		data = JSON.stringify(data);
 		
 		try {
@@ -978,11 +1130,11 @@ class TwoDimensionalVideo extends Component {
 			if (res) {
 				console.log("updated data");
 				this.initialState();
-				this.showNotification({
-					title: "Good job, ",
-					message: "Saved data successfully.",
-					type: "info",
-				});
+				// this.showNotification({
+				// 	title: "Good job, ",
+				// 	message: "Saved data successfully.",
+				// 	type: "info",
+				// });
 			}
 		} catch (error) {
 			
@@ -1003,6 +1155,8 @@ class TwoDimensionalVideo extends Component {
 		const activeVertex = e.target;
 		const group = activeVertex.getParent();		
 		this.setState((prevState) => {
+			if (!this.state.fullscreen)
+				this.UndoRedoState.save({...prevState, edit: false});
 			const { isAdding, focusing, entities } = prevState;
 			if (isAdding) {
 				const { annotations } = entities;
@@ -1030,10 +1184,9 @@ class TwoDimensionalVideo extends Component {
 		const group = activeVertex.getParent();
 		const stage = e.target.getStage();
 		const position = stage.getPointerPosition();
-
-
-
 		this.setState((prevState) => {
+			if (!this.state.fullscreen)
+				this.UndoRedoState.save({...prevState, edit: false});
 			const { isAdding, entities, played } = prevState;
 			if (isAdding) return {};			
 			const { annotations } = entities;
@@ -1076,14 +1229,20 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleAnnotationChangeLabel = (string) => {
-		const { focusing, entities } = this.state;
+		const { focusing, entities, isAdding } = this.state;
 		this.setState(prevState => {
-			const { annotations } = entities;
-			annotations[focusing].labelText = string;
-			return {
-				entities: {
-					...entities,
-					annotations
+			if (isAdding) {
+				return {labelText: string}
+			} else {
+				if (!this.state.fullscreen)
+					this.UndoRedoState.save({...prevState, edit: false});
+				const { annotations } = entities;
+				annotations[focusing].labelText = string;
+				return {
+					entities: {
+						...entities,
+						annotations
+					}
 				}
 			}
 		})
@@ -1100,7 +1259,8 @@ class TwoDimensionalVideo extends Component {
 			const position = group.position();
 			const uniqueKey = getUniqueKey();
 			this.setState((prevState) => {
-				this.UndoRedoState.save(prevState);
+				if (!this.state.fullscreen)
+					this.UndoRedoState.save(prevState);
 				const { entities, played } = prevState;
 				const { incidents, shapeType } = entities.annotations[group.name()];
 				for (let i = 0; i < incidents.length; i += 1) {
@@ -1117,8 +1277,6 @@ class TwoDimensionalVideo extends Component {
 								console.log("vt =>", parseFloat(diffX));
 								return {
 									...vt,
-									// x: parseFloat(vt.x) + parseFloat(diffX),
-									// y: parseFloat(vt.y) + position.y
 								};
 							})
 							break;
@@ -1152,21 +1310,33 @@ class TwoDimensionalVideo extends Component {
 	/** Line  */
 	handleLineArrow(e) {
 		this.setState(prevState => {
-			const { focusing, entities } = prevState;
-			const { annotations } = entities;
-			const current = annotations[focusing];
-			current.arrowHead = !current.arrowHead;
-			return {}
+			const { focusing, entities, isAdding, arrowHead } = prevState;
+			if (isAdding) {
+				return { arrowHead: !arrowHead }
+			} else {
+				if (!this.state.fullscreen)
+					this.UndoRedoState.save({...prevState, edit: false})
+				const { annotations } = entities;
+				const current = annotations[focusing];
+				current.arrowHead = !current.arrowHead;
+				return {}
+			}
 		})
 	}
 
 	handleLineWave(e) {
 		this.setState(prevState => {
-			const { focusing, entities } = prevState;
-			const { annotations } = entities;
-			const current = annotations[focusing];
-			current.wave = !current.wave;
-			return {}
+			const { focusing, entities, isAdding, wave } = prevState;
+			if (isAdding) {
+				return { wave: !wave }
+			} else {
+				if (!this.state.fullscreen)
+					this.UndoRedoState.save({...prevState, edit: false})
+				const { annotations } = entities;
+				const current = annotations[focusing];
+				current.wave = !current.wave;
+				return {}
+			}
 		})
 	}
 
@@ -1174,16 +1344,22 @@ class TwoDimensionalVideo extends Component {
 	handleChangeLineMode(e) {
 		const value = e.target.value;
 		this.setState(prevState => {
-			const { focusing, entities } = prevState;
+			const { focusing, entities, isAdding, lineMode } = prevState;
 			const { annotations } = entities;
-			const current = annotations[focusing];
-			current.lineMode = String(value);
-			return {}
+			if (isAdding) {
+				return { lineMode: String(value) }
+			} else {
+				if (!this.state.fullscreen)
+					this.UndoRedoState.save({...prevState, edit: false})
+				const current = annotations[focusing];
+				current.lineMode = String(value);
+				return {}
+			}
 		})
 	}
 
 	LineProperties() {
-		const { focusing, entities } = this.state;
+		const { focusing, entities, isAdding, arrowHead, wave, lineMode } = this.state;
 		const LineModes = [
 			{
 				label: "Normal",
@@ -1199,24 +1375,28 @@ class TwoDimensionalVideo extends Component {
 			}
 		]
 		return (<div className="d-flex">
-			<Button 
-				className={`ml-2 mr-1`} 
-				outline={!entities.annotations[focusing].arrowHead}
-				color="dark"
-				onClick={e => this.handleLineArrow(e)}
-			>
-				ArrowHeader
-			</Button>
-			<Button 
-				className={`mr-1`} 
-				outline={!entities.annotations[focusing].wave}
-				color="dark"
-				onClick={e => this.handleLineWave(e)}
-			>
-				Wave
-			</Button>
+			<div>
+				<Button 
+					className={`mr-1`} 
+					outline={isAdding ? !arrowHead : !entities.annotations[focusing].arrowHead}
+					color="dark"
+					onClick={e => this.handleLineArrow(e)}
+				>
+					ArrowHeader
+				</Button>
+			</div>
+			<div>
+				<Button 
+					className={`mr-1`} 
+					outline={isAdding ? !wave : !entities.annotations[focusing].wave}
+					color="dark"
+					onClick={e => this.handleLineWave(e)}
+				>
+					Wave
+				</Button>
+			</div>
 			<FormGroup>
-				<Input type="select" onChange={e => this.handleChangeLineMode(e)} value={entities.annotations[focusing].lineMode}>
+				<Input type="select" onChange={e => this.handleChangeLineMode(e)} value={isAdding? lineMode : entities.annotations[focusing].lineMode}>
 					{
 						LineModes.map((mode, key) => <option value={mode.value} key={key}>{mode.label}</option>)
 					}
@@ -1237,6 +1417,27 @@ class TwoDimensionalVideo extends Component {
 	handlePlayerShowAnnotation = () => {
 		this.setState({ showAnnotation: !this.state.showAnnotation })
 	}
+
+	handlePlayerWrap = (playerWrap) => {
+		this.playerWrap = playerWrap;
+		this.setState({
+			videoWidth: playerWrap.clientWidth - 9
+		});
+	}
+
+	handleAnnotationEdit = () => {
+		this.setState({edit: true});
+	}
+
+	handleCancel = () => {		
+		this.setState({
+			edit: false,
+			focusing: "",
+			isAdding: false,	
+		});
+	}
+
+	handleCanvasEndFirstDrawing = () => (this.setState({ isFirstDrawing: false }))
 
 	render() {
 		const {
@@ -1259,6 +1460,7 @@ class TwoDimensionalVideo extends Component {
 			fullscreen,
 			zoomRate,
 			showAnnotation,
+			isFirstDrawing
 		} = this.state;
 		const {
 			className,
@@ -1293,6 +1495,7 @@ class TwoDimensionalVideo extends Component {
 			fullscreen,
 			zoomRate,
 			showAnnotation,
+			isFirstDrawing,
 
 			onVideoReady: this.handleVideoReady,
 			onVideoProgress: this.handleVideoProgress,
@@ -1324,7 +1527,9 @@ class TwoDimensionalVideo extends Component {
 			onAnnotationChangeLabel: this.handleAnnotationChangeLabel,
 			onCanvasGroupMove: this.handleCanvasGroupMove,
 			onPlayerFullScreen: this.handlePlayerFullScreen,
-			onPlayerShowAnnotation: this.handlePlayerShowAnnotation
+			onPlayerShowAnnotation: this.handlePlayerShowAnnotation,
+			onAnnotationEditClick: this.handleAnnotationEdit,
+			onCanvasEndFirstDrawing: this.handleCanvasEndFirstDrawing,
 		};
 
 		let controlPanelUI = null;
@@ -1342,63 +1547,94 @@ class TwoDimensionalVideo extends Component {
 			<I18nextProvider i18n={ i18nextInstance }>
 				<TwoDimensionalVideoContext.Provider value={ twoDimensionalVideoContext }>
 					<div className={ rootClassName }>	
-						<Alert
+						{/* <Alert
 							title={this.state.notification.title} 
 							message={this.state.notification.message}
 							type={this.state.notification.type}
 							open={this.state.notification.open}
-						/>
+						/> */}
 
-						<div className='d-flex justify-content-around py-5 px-3 two-dimensional-video__main'>		
-											
-							<div className='mb-3 two-dimensional-video__control-panel px-3 py-3 position-relative'>
-								<div className='w-100 pb-3 clearfix'>
-									{this.renderAddButtonUI()}
+						<div id="stage-wrap" className='row justify-content-around py-5 px-3 two-dimensional-video__main'>
+							<div className="col-lg-6 mb-4">
+								<div ref={this.handlePlayerWrap} className="w-100">
+									<DrawableVideoPlayer />
 								</div>
-								{ controlPanelUI }
-								{ isSubmitted ? '' : (
-									<div className="w-100 pt-3 px-3 mb-3 save-wrap">
-										<Button 
-											className="w-100"
-											color="success" 
-											onClick={ this.handleSaveData }			
-											disabled={this.state.apicallStatus == "calling"}					
-										>		
-											<Loader color={'#FFF'} loading={this.state.apicallStatus == "calling"} size={5} />									
-											{
-												this.state.apicallStatus != "calling" && <span>Save</span>
-											}
-										</Button>
-									</div>
-								)}
 							</div>
-
-							<div className='w-100 ml-3 d-flex flex-wrap'>
-								<div className="d-flex py-3 px-5 custom-card w-100" style={{
-									maxHeight: 70
-								}}>
-									<SelectShape 
-										className="mr-2"
-										value={this.state.shape}
-										options={shapeList}
-										onClick={(value) => {this.handleShape(value)} }
-									/>
-									{
-										this.state.focusing && <div className="d-flex">
+							<div className="col-lg-6">								
+								<div className='d-flex pb-3'>
+									{this.renderAddButtonUI()}	
+									<ButtonGroup className='float-right'>
+										<Button disabled={ this.UndoRedoState.previous.length === 0 } outline onClick={ this.handleUndo }><MdUndo /></Button>
+										<Button disabled={ this.UndoRedoState.next.length === 0 } outline onClick={ this.handleRedo }><MdRedo /></Button>
+									</ButtonGroup>								
+								</div>
+								{
+									this.state.isAdding && <div>
+										<SelectShape 
+											className="mr-2"
+											value={this.state.shape}
+											options={shapeList}
+											onClick={(value) => {this.handleShape(value)} }
+										/>
+									</div>
+								}
+								{
+									((this.state.focusing && this.state.edit) || this.state.isAdding ) && <div className="row pb-3">
+										<div className="" style={{ marginLeft: 15 }}>
 											<ColorPicker
 												onChange={ this.handleChangeColorPicker }
-												value={ this.state.focusing ? this.state.entities.annotations[this.state.focusing].color.replace(/,1\)/, ',.3)') : '' }					
+												value={ this.state.isAdding ? this.state.color : this.state.entities.annotations[this.state.focusing].color.replace(/,1\)/, ',.3)') }					
+											/>
+										</div>
+										<div className="col-sm-7">
+											<Input
+												className="mb-3"
+												value={this.state.isAdding ? this.state.labelText : this.state.entities.annotations[this.state.focusing].labelText}
+												onChange={e => this.handleAnnotationChangeLabel(e.target.value)}
 											/>
 											{
 												this.state.shape === "line" && this.LineProperties()
 											}
+											{
+												(!this.state.isAdding && this.state.entities.annotations[focusing].incidents[this.state.entities.annotations[focusing].incidents.length - 1].time < played) && <Button
+													className="btn-black"
+													color="default"
+													onClick={() => this.handleListAnnotationShowHide({name: this.state.entities.annotations[this.state.focusing].name, status: HIDE})}
+												>
+													Endpoint
+													<img src="img/endpoint.png" width={40} height={22} alt="Endpoint"/>
+												</Button>
+											}
 										</div>
-									}
-									
-								</div>
-								<div className='px-3' style={ { width: '100%' } }>
-									<DrawableVideoPlayer />
-								</div>
+									</div>
+								}
+								{ (isSubmitted || this.state.edit || this.state.isAdding) ? '' : (
+									<div className="w-100 d-flex justify-content-end pb-3">
+										{/* <Button 
+											className="px-5 mr-2"
+											outline
+											color="danger" 
+											onClick={ this.handleCancel }			
+											disabled={this.state.apicallStatus == "calling"}					
+										>		
+											Cancel
+										</Button> */}
+										<Button 
+											className="px-5"
+											color="success" 
+											onClick={ this.handleSaveData }			
+											disabled={this.state.apicallStatus == "calling"}					
+										>		
+											Save
+										</Button>
+									</div>
+								)}								
+								{
+									(this.state.edit || this.state.isAdding) ? null : <div className="col-xl-8 px-0">
+										{ controlPanelUI }
+									</div>
+								}								
+								
 							</div>
 						</div>
 						<PopupDialog isOpen={ isDialogOpen } title={ dialogTitle } message={ dialogMessage } onToggle={ this.handleDialogToggle } hasCloseButton />

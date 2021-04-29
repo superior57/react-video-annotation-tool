@@ -21,6 +21,7 @@ const OpenDialogButton = ({
 				outline={ outline }
 				className={ className }
 				color={ color }
+				// size="sm"
 				onClick={ () => {
 					if (isDialogDisabled) {
 						onYesClick();

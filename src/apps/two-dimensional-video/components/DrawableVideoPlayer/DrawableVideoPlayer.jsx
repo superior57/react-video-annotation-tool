@@ -28,6 +28,7 @@ const DrawableVideoPlayer = ({
 		shape,
 		fullscreen,
 		zoomRate,
+		isFirstDrawing,
 		showAnnotation,
 		onVideoReady,
 		onVideoProgress,
@@ -51,7 +52,8 @@ const DrawableVideoPlayer = ({
 		onCanvasVertexDragEnd,
 		onCanvasGroupMove,
 		onPlayerFullScreen,
-		onPlayerShowAnnotation
+		onPlayerShowAnnotation,
+		onCanvasEndFirstDrawing
 	} = twoDimensionalVideoContext;
 
 	const rootClassName = `drawable-video-player${className ? ` ${className}` : ''}`;
@@ -91,6 +93,7 @@ const DrawableVideoPlayer = ({
 						onLineMouseDown={onCanvasLineMouseDown}
 						onVertexDragEnd={onCanvasVertexDragEnd}
 						onGroupMove={onCanvasGroupMove}
+						onEndFirstDrawing={onCanvasEndFirstDrawing}
 					/>
 				}
 			</div>

@@ -21,7 +21,8 @@ const Rectangle = ({
 	childrenNames = [],
 	parentName = '',
 	shapeType = '',
-	labelText = ''
+	labelText = '',
+	videoWidth = 0
 }) => {
 	const state = {
 		color,
@@ -30,7 +31,8 @@ const Rectangle = ({
 		childrenNames,
 		parentName,
 		shapeType,
-		labelText
+		labelText,
+		videoWidth
 	};
 	return Object.assign(state, withBasicIdentities({ id, name, label }), canClearRedundantIncidents(state));
 };

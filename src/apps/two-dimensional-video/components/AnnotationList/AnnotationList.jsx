@@ -48,6 +48,7 @@ const AnnotationList = ({ className }) => {
 			itemData={ entities.annotations[ann] }
 			isDialogDisabled={ isDialogDisabled }
 			dispatchIsDialogDisabled={ dispatchIsDialogDisabled }
+			className="mb-2"
 		/>
 		});
 	if (itemsUI.length === 0) {

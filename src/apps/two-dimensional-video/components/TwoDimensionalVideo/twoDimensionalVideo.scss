@@ -29,16 +29,16 @@
     transition: 400ms;
 }
 
-.alert-info {
-    // color: #0b0b0b;
-    // background-color: #03a9f4ba;
-    // border-color: #03a9f4ba;
-    // position: fixed;
-    // width: 100%;
+.btn {
+    border-radius: 0;
+    box-shadow: 0 !important;
 }
 
-.btn:focus {
-    // box-shadow: none;
+
+.btn:focus,
+.btn:hover,
+.btn:active {
+    box-shadow: none !important;
 }
 
 .two-dimensional-video__main {
@@ -50,4 +50,45 @@
     left: 0;
     top: auto;
     bottom: 0;
+}
+
+.btn-shape {
+    outline: solid 1px gray;
+    border: solid 2px transparent;
+    background: #FFF;
+}
+
+.btn-line-property {
+    background: #FFF;
+}
+
+.btn-shape:hover,
+.btn-shape:focus,
+.btn-shape:active,
+.btn-shape.selected {
+    outline-color: #000;
+    border-color: #000;
+}
+
+.sketch-picker {
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+.form-control {
+    border-radius: 0;
+}
+
+.form-control:focus,
+.form-control:active {
+    box-shadow: none;
+}
+
+.btn-black {
+    border: solid 1px #000;
+    background: #FFF;
+}
+
+.btn-black:hover {
+    opacity: .7;
 }

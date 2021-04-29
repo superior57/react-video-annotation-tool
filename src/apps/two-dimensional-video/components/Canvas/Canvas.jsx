@@ -143,6 +143,7 @@ const Canvas = ({
 	entities,
 	annotations,
 	isEmptyCheckEnable, 
+	isFirstDrawing,
 	onStageMouseDown,
 	onGroupDragEnd,
 	onGroupMouseDown,
@@ -151,13 +152,14 @@ const Canvas = ({
 	onVertexMouseDown,
 	onLineMouseDown,
 	onVertexDragEnd,
-	onGroupMove
+	onGroupMove,
+	onEndFirstDrawing
 }) => {
 	const { t } = useTranslation('twoDimensionalVideo');
 	const layerItems = [];
 	
 	annotations.slice().reverse().forEach((annotationId) => {
-		const { color, id, name, shapeType, isManipulatable } = entities.annotations[annotationId];
+		const { color, id, name, shapeType, isManipulatable, videoWidth } = entities.annotations[annotationId];
 		const isCurrent = focusing == id;
 
 		if( shapeType == "polygon" ) {
@@ -218,7 +220,8 @@ const Canvas = ({
 									onBlur={ () => {} }
 								/>,
 							);
-						} else {
+						}
+						if (isAdding || focusing === incidents[i].vertices[0].name) {
 							verticesUI.push(
 								<Rect
 									offsetX={ CONST.DOT_LENGTH / 2 }
@@ -251,7 +254,7 @@ const Canvas = ({
 							name={ name }
 							points={ linePoints }
 							closed={ isClosed }
-							fill={ focusing === name ? colorWithOpacity : '' }
+							fill={ color }
 							stroke={ color }
 							strokeWidth={ 1 }
 							lineCap='round'
@@ -719,6 +722,7 @@ const Canvas = ({
 						onFocus: (ev) => {
 						}
 					}
+
 					switch (shapeType) {
 						case "circle" :  
 							shapeProps.x = width / 2;
@@ -728,13 +732,6 @@ const Canvas = ({
 								{...shapeProps}
 							/>
 						); break;
-						// case "line" : shape = (
-						// 	<Line
-						// 		{...shapeProps}				
-						// 		points={[0, height / 2, width, height / 2]}
-						// 		strokeWidth={5}
-						// 	/>
-						// ); break;
 						case "rect" : shape = (
 							<Rect
 								{...shapeProps}																			
@@ -811,6 +808,9 @@ const Canvas = ({
 			}
 		}
 	});
+	if (isFirstDrawing) {
+		onEndFirstDrawing();
+	}
 	return (
 		<Stage
 			width={ canvasWidth }
@@ -826,7 +826,7 @@ const Canvas = ({
 			{ isAdding && (
 				<Layer>
 					<Rect fill='#fff' width={ canvasWidth } height={ canvasHeight } opacity={ 0.2 } />
-					<Text y={ canvasHeight / 2 } width={ canvasWidth } text={ t('canvasAddingHint') } align='center' fontSize={ 16 } fill='#fff' />
+					<Text y={ canvasHeight / 2 } width={ canvasWidth } text={ t('canvasAddingHint') } align='center' fontSize={ 16 } fill='#fff' opacity={0.3} />
 				</Layer>
 			)}
 			<Layer>{layerItems}</Layer>
