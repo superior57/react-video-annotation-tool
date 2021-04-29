@@ -406,48 +406,12 @@ const Canvas = ({
 							onBlur={ () => {} }
 						/>
 					);	
-					
-					// const fill = color.replace(/, [0-9].[0-9][0-9]\)/, ', 1)')
-					// 					.replace(/, [0-9][0-9]\)/, ', 1)')
-					// 					.replace(/, [0-9]\)/, ', 1)');
-					// let resizingAnchorsUI = null;
-					// const resizingAnchorsData = [
-					// 	{ x: absMinX, y: absMinY, key: 'topLeft', name: 'topLeft' },
-					// 	{ x: absMaxX, y: absMinY, key: 'topRight', name: 'topRight' },
-					// 	{ x: absMaxX, y: absMaxY, key: 'bottomRight', name: 'bottomRight' },
-					// 	{ x: absMinX, y: absMaxY, key: 'bottomLeft', name: 'bottomLeft' },
-					// 	{ x: (absMaxX - absMinX) / 2, y: absMinY, key: 'top', name: 'top' },
-					// 	{ x: absMinX, y: (absMaxY - absMinY) / 2, key: 'left', name: 'left' },
-					// 	{ x: absMaxX, y: (absMaxY - absMinY) / 2, key: 'right', name: 'right' },
-					// 	{ x: (absMaxX - absMinX) / 2, y: absMaxY, key: 'bottom', name: 'bottom' },
-					// ];
-					// if (isManipulatable && isCurrent ) {
-					// 	resizingAnchorsUI = resizingAnchorsData.map(data => (
-					// 		<ResizingAnchor
-					// 			dotLength={ dotLength }
-					// 			color={ fill }
-					// 			isManipulatable={ isManipulatable }
-					// 			x={ data.x }
-					// 			y={ data.y }
-					// 			key={ data.key }
-					// 			name={ data.name }
-					// 			canvasWidth={ canvasWidth }
-					// 			canvasHeight={ canvasHeight }
-					// 			onDragEnd={ onDotDragEnd }
-					// 			onMouseDown={ onDotMouseDown }
-					// 			shape={{
-					// 				type: shapeType
-					// 			}}
-					// 		/>
-					// 	));
-					// }
 		
 					layerItems.push(
 						<Group
 							key={ name }
 							id={ id }
 							name={ name }
-							// draggable={ isManipulatable }
 							onMouseDown={ (e) => {
 								const group = e.target.findAncestor('Group');
 								if (!isManipulatable) return;
@@ -463,7 +427,6 @@ const Canvas = ({
 						>
 							{lineUI}
 							{verticesUI}
-							{/* {resizingAnchorsUI} */}
 						</Group>
 					);
 				}
@@ -862,7 +825,7 @@ const Canvas = ({
 		>
 			{ isAdding && (
 				<Layer>
-					<Rect fill='#fff' width={ canvasWidth } height={ canvasHeight } opacity={ 0.9 } />
+					<Rect fill='#fff' width={ canvasWidth } height={ canvasHeight } opacity={ 0.2 } />
 					<Text y={ canvasHeight / 2 } width={ canvasWidth } text={ t('canvasAddingHint') } align='center' fontSize={ 16 } fill='#fff' />
 				</Layer>
 			)}

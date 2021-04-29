@@ -374,10 +374,8 @@ class TwoDimensionalVideo extends Component {
 						entities: { ...entities, annotations: entities.annotations },
 					};
 				}
-				// entities.annotations[focusing] = true;
-				prevState.isAdding = false;
-				// continuing adding
 				if (shape === "line") {
+					prevState.isAdding = false;
 					const startPoints = entities.annotations[focusing].incidents[0].vertices[0];
 					const controlPoints = [];
 					controlPoints.push( parseFloat(startPoints.x) + ((parseFloat(x) - parseFloat(startPoints.x)) / 2) );
