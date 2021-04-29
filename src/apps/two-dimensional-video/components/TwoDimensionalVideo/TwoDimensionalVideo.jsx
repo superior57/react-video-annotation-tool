@@ -682,6 +682,7 @@ class TwoDimensionalVideo extends Component {
 			cur_played = incidents[0].time;
 		}
 		this.setState({ focusing: name, shape: shapeType, played: cur_played });
+		this.player.seekTo(cur_played);
 	};
 
 	handleIncidentItemClick = (incident) => {
@@ -1602,7 +1603,7 @@ class TwoDimensionalVideo extends Component {
 													onClick={() => this.handleListAnnotationShowHide({name: this.state.entities.annotations[this.state.focusing].name, status: HIDE})}
 												>
 													Endpoint
-													<img src="img/endpoint.png" width={40} height={22} alt="Endpoint"/>
+													<img src={shapeIcons.endpoint} width={40} height={22} alt="Endpoint"/>
 												</Button>
 											}
 										</div>
