@@ -381,6 +381,7 @@ class TwoDimensionalVideo extends Component {
 	}
 
 	handleVideoSliderChange = (e) => {
+		console.log("handleVideoSliderChange");
 		const played = getFixedNumber(e.target.value, 5);
 		this.setState((prevState) => {
 			const { entities } = prevState;
@@ -455,6 +456,7 @@ class TwoDimensionalVideo extends Component {
 	/* ==================== canvas ==================== */
 
 	handleCanvasStageMouseDown = (e) => {
+		console.log("handleCanvasStageMouseDown");
 		const { isAdding, shape, color, videoWidth, fullscreen } = this.state;
 		const stage = e.target.getStage();
 		const position = stage.getPointerPosition();
@@ -532,6 +534,7 @@ class TwoDimensionalVideo extends Component {
 					focusing: `${uniqueKey}`,
 					annotations: [...annotations, `${uniqueKey}`],
 					entities: { ...entities, annotations: entities.annotations },
+					edit: true
 				};
 			}, () => {
 				const group = stage.find(`.${uniqueKey}`)[0];
@@ -670,7 +673,7 @@ class TwoDimensionalVideo extends Component {
 				}
 			}
 			annotations[group.name()].incidents = incidents;
-			return { entities: { ...entities, annotations } };
+			return { entities: { ...entities, annotations }, edit: true };
 		});
 	}
 
@@ -1026,7 +1029,8 @@ class TwoDimensionalVideo extends Component {
 			defaultNumRootAnnotations,
 			annotations,
 			entities,
-			edit
+			edit,
+			focusing
 		} = this.state;
 		const { numAnnotationsCanBeAdded } = this.props;
 		const isAddButtonAvailable = (defaultNumRootAnnotations + numAnnotationsCanBeAdded) > getLastAnnotationLabel(annotations, entities);
@@ -1038,7 +1042,7 @@ class TwoDimensionalVideo extends Component {
 						onClick={ this.handleAddClick }
 					>
 						<MdAdd />
-						{isAdding ? 'Done adding' : edit ? 'Done editing' : 'Add drawing'}
+						{((isAdding || edit) && focusing ) ? 'End drawing' : 'Add drawing'}
 					</Button>
 					{/* {
 						(isAdding && this.state.shape == "chain") && <Button
@@ -1440,6 +1444,22 @@ class TwoDimensionalVideo extends Component {
 
 	handleCanvasEndFirstDrawing = () => (this.setState({ isFirstDrawing: false }))
 
+	endPointButtonUI = () => {
+		const { focusing, isAdding, entities, played } = this.state;
+		if (focusing) {
+			const { incidents } = entities.annotations[focusing];			
+			return (!isAdding && incidents[0].time < played) && <Button
+				className="btn-black"
+				color="default"
+				onClick={() => this.handleListAnnotationShowHide({name: entities.annotations[focusing].name, status: HIDE})}
+			>
+				Endpoint
+				<img src={shapeIcons.endpoint} width={40} height={22} alt="Endpoint"/>
+			</Button>
+		}
+
+	}
+
 	render() {
 		const {
 			isSubmitted,
@@ -1461,7 +1481,10 @@ class TwoDimensionalVideo extends Component {
 			fullscreen,
 			zoomRate,
 			showAnnotation,
-			isFirstDrawing
+			isFirstDrawing,
+			edit,
+			color,
+			labelText
 		} = this.state;
 		const {
 			className,
@@ -1569,47 +1592,7 @@ class TwoDimensionalVideo extends Component {
 										<Button disabled={ this.UndoRedoState.next.length === 0 } outline onClick={ this.handleRedo }><MdRedo /></Button>
 									</ButtonGroup>								
 								</div>
-								{
-									this.state.isAdding && <div>
-										<SelectShape 
-											className="mr-2"
-											value={this.state.shape}
-											options={shapeList}
-											onClick={(value) => {this.handleShape(value)} }
-										/>
-									</div>
-								}
-								{
-									((this.state.focusing && this.state.edit) || this.state.isAdding ) && <div className="row pb-3">
-										<div className="" style={{ marginLeft: 15 }}>
-											<ColorPicker
-												onChange={ this.handleChangeColorPicker }
-												value={ this.state.isAdding ? this.state.color : this.state.entities.annotations[this.state.focusing].color.replace(/,1\)/, ',.3)') }					
-											/>
-										</div>
-										<div className="col-sm-7">
-											<Input
-												className="mb-3"
-												value={this.state.isAdding ? this.state.labelText : this.state.entities.annotations[this.state.focusing].labelText}
-												onChange={e => this.handleAnnotationChangeLabel(e.target.value)}
-											/>
-											{
-												this.state.shape === "line" && this.LineProperties()
-											}
-											{
-												(!this.state.isAdding && this.state.entities.annotations[focusing].incidents[this.state.entities.annotations[focusing].incidents.length - 1].time < played) && <Button
-													className="btn-black"
-													color="default"
-													onClick={() => this.handleListAnnotationShowHide({name: this.state.entities.annotations[this.state.focusing].name, status: HIDE})}
-												>
-													Endpoint
-													<img src={shapeIcons.endpoint} width={40} height={22} alt="Endpoint"/>
-												</Button>
-											}
-										</div>
-									</div>
-								}
-								{ (isSubmitted || this.state.edit || this.state.isAdding) ? '' : (
+								{ (isSubmitted || edit || isAdding) ? '' : (
 									<div className="w-100 d-flex justify-content-end pb-3">
 										{/* <Button 
 											className="px-5 mr-2"
@@ -1629,12 +1612,40 @@ class TwoDimensionalVideo extends Component {
 											Save
 										</Button>
 									</div>
-								)}								
+								)}	
 								{
-									(this.state.edit || this.state.isAdding) ? null : <div className="col-xl-8 px-0">
+									((focusing && edit) || isAdding) ? <div>
+										<SelectShape 
+											className="mr-2"
+											value={this.state.shape}
+											options={shapeList}
+											onClick={(value) => {this.handleShape(value)} }
+										/>
+										<div className="row pb-3">
+											<div className="" style={{ marginLeft: 15 }}>
+												<ColorPicker
+													onChange={ this.handleChangeColorPicker }
+													value={ isAdding ? color : entities.annotations[focusing].color.replace(/,1\)/, ',.3)') }					
+												/>
+											</div>
+											<div className="col-sm-7">
+												<Input
+													className="mb-3"
+													value={isAdding ? labelText : entities.annotations[focusing].labelText}
+													onChange={e => this.handleAnnotationChangeLabel(e.target.value)}
+												/>
+												{
+													shape === "line" && this.LineProperties()
+												}
+												{
+													this.endPointButtonUI()
+												}
+											</div>
+										</div>
+									</div> : <div className="col-xl-8 px-0">
 										{ controlPanelUI }
 									</div>
-								}								
+								}
 								
 							</div>
 						</div>
